@@ -1,5 +1,8 @@
 import { v } from "convex/values";
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { landmarks } from "./landmarks";
+
+export const listLandmarks = internalQuery({ args: {}, handler: async (ctx) => await ctx.db.query("landmarks").collect() });
 
 export const listDrives = query({
   args: {},
@@ -113,6 +116,12 @@ const catalog = [
     waypoints: [{ lat: 37.8780, lng: -122.5150 }, { lat: 37.8620, lng: -122.5850 }, { lat: 37.8605, lng: -122.5760 }, { lat: 37.9005, lng: -122.6440 }],
   },
   {
+    name: "Highway 1: SF to Santa Cruz", elevationSpan: 150, vibes: [{ points: 4, label: "Pacific the whole way", icon: "water.waves" }, { points: 3, label: "Lighthouses at Montara and Pigeon Point", icon: "light.beacon.max" }, { points: 2, label: "Devil's Slide cliffs", icon: "mountain.2" }, { points: 2, label: "Ends at the Boardwalk", icon: "ferriswheel" }], region: "San Francisco",
+    blurb: "Seventy miles of coast: surf towns, lighthouses, elephant seals, then the Giant Dipper.",
+    bestTime: "sunset" as const, color: "#4FB3D9", photoUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Pigeon_Point_Lighthouse_%282016%29.jpg/960px-Pigeon_Point_Lighthouse_%282016%29.jpg",
+    waypoints: [{ lat: 37.7594, lng: -122.5107 }, { lat: 37.6669, lng: -122.4950 }, { lat: 37.5951, lng: -122.5017 }, { lat: 37.5590, lng: -122.5135 }, { lat: 37.5364, lng: -122.5193 }, { lat: 37.4636, lng: -122.4286 }, { lat: 37.3220, lng: -122.4020 }, { lat: 37.1818, lng: -122.3940 }, { lat: 37.1080, lng: -122.3340 }, { lat: 37.0110, lng: -122.1960 }, { lat: 36.9515, lng: -122.0266 }, { lat: 36.9644, lng: -122.0177 }],
+  },
+  {
     name: "Embarcadero and the Bay Lights", elevationSpan: 10, vibes: [{ points: 4, label: "25,000 LEDs on the Bay Bridge", icon: "sparkles" }, { points: 2, label: "Waterfront the whole way", icon: "water.waves" }, { points: 1, label: "Ferry Building", icon: "building.columns" }], region: "San Francisco",
     blurb: "The Bay Bridge lights doing their thing over the water.",
     bestTime: "night" as const, color: "#8E8BD6",
@@ -206,8 +215,13 @@ export const seed = internalMutation({
         await ctx.db.insert("drives", { ...drive, upvotes: 0, moments: momentsByDrive[drive.name] });
         inserted++;
       } else {
-        await ctx.db.patch("drives", existing._id, { vibes: drive.vibes, elevationSpan: drive.elevationSpan, moments: momentsByDrive[drive.name] });
+        await ctx.db.patch("drives", existing._id, { vibes: drive.vibes, elevationSpan: drive.elevationSpan, moments: momentsByDrive[drive.name], photoUrl: "photoUrl" in drive ? drive.photoUrl : undefined });
       }
+    }
+    for (const landmark of landmarks) {
+      const existing = await ctx.db.query("landmarks").withIndex("by_name", (q) => q.eq("name", landmark.name)).unique();
+      if (existing) await ctx.db.replace("landmarks", existing._id, landmark);
+      else await ctx.db.insert("landmarks", landmark);
     }
     return { inserted };
   },

@@ -8,7 +8,8 @@ import { simplify } from "./simplify";
 
 type Point = { lat: number; lng: number };
 type Coordinate = [number, number];
-type Route = { coordinates: Coordinate[]; minutes: number; firstLegMinutes: number; legKm: number[]; estimated: boolean };
+type Step = { type: string; modifier: string; name: string; distance: number; along: number; lat: number; lng: number };
+type Route = { steps: Step[]; meters: number; coordinates: Coordinate[]; minutes: number; firstLegMinutes: number; legKm: number[]; estimated: boolean };
 
 function distance(a: Point, b: Point) {
   const rad = Math.PI / 180;
@@ -22,11 +23,11 @@ async function route(points: Point[]): Promise<Route> {
   const timeout = setTimeout(() => controller.abort(), 6000);
   try {
     const coordinates = points.map((p) => `${p.lng},${p.lat}`).join(";");
-    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`, { signal: controller.signal });
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`, { signal: controller.signal });
     if (!response.ok) throw new Error("Routing unavailable");
     const data = await response.json() as {
       code?: string;
-      routes?: { duration: number; geometry: { coordinates: number[][] }; legs: { duration: number; distance: number }[] }[];
+      routes?: { duration: number; distance: number; geometry: { coordinates: number[][] }; legs: { duration: number; distance: number; steps?: { distance: number; name?: string; maneuver: { type: string; modifier?: string; location: number[] } }[] }[] }[];
     };
     const result = data.routes?.[0];
     if (data.code !== "Ok" || !result || !Number.isFinite(result.duration) || result.duration < 0
@@ -34,7 +35,15 @@ async function route(points: Point[]): Promise<Route> {
       || result.geometry.coordinates.length < 2 || result.geometry.coordinates.some((p) => p.length < 2 || !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
       throw new Error("Invalid routing response");
     }
+    let along = 0;
+    const steps: Step[] = result.legs.flatMap((leg) => leg.steps ?? []).flatMap((step) => {
+      const start = along;
+      along += step.distance;
+      if (step.maneuver.type === "depart" || (step.maneuver.type === "arrive" && along < result.distance - 50)) return [];
+      return [{ type: step.maneuver.type, modifier: step.maneuver.modifier ?? "", name: step.name ?? "", distance: step.distance, along: start, lat: step.maneuver.location[1], lng: step.maneuver.location[0] }];
+    });
     return {
+      steps, meters: result.distance,
       coordinates: result.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
       minutes: result.duration / 60,
       firstLegMinutes: result.legs[0].duration / 60,
@@ -45,6 +54,7 @@ async function route(points: Point[]): Promise<Route> {
     const legKm = points.slice(1).map((p, index) => distance(points[index], p));
     const legMinutes = legKm.map((km) => km / 50 * 60);
     return {
+      steps: [], meters: legKm.reduce((t, km) => t + km, 0) * 1000,
       coordinates: points.map((p) => [p.lat, p.lng]),
       minutes: legMinutes.reduce((total, minutes) => total + minutes, 0),
       firstLegMinutes: legMinutes[0],
@@ -57,7 +67,7 @@ async function route(points: Point[]): Promise<Route> {
 }
 
 const kindPoints: Record<string, number> = { bridge: 3, viewpoint: 3, water: 2, beach: 2, curves: 2, forest: 2, landmark: 1, city: 1 };
-type TimedMoment = { label: string; kind: string; lat: number; lng: number; note: string; points: number; offsetMinutes: number; sunsetAt: number };
+type TimedMoment = { wiki?: string; label: string; kind: string; lat: number; lng: number; note: string; points: number; offsetMinutes: number; sunsetAt: number };
 
 type Item = { label: string; points: number; icon: string; muted?: boolean };
 
@@ -87,7 +97,7 @@ export const planRoutes = action({
     fast: Coordinate[]; fastMinutes: number; fastItems: Item[]; fastScore: number; estimated: boolean;
     vibe: Coordinate[] | null; vibeMinutes: number | null; extraMinutes: number | null; drive: Doc<"drives"> | null;
     goldenHour: string | null; goldenHourAt: string | null; miles: number | null; scenicItems: Item[]; scenicScore: number | null;
-    moments: TimedMoment[]; leaveAt: number | null; sunsetAt: number | null;
+    moments: TimedMoment[]; leaveAt: number | null; sunsetAt: number | null; steps: Step[]; meters: number | null;
   }> => {
     for (const p of [origin, destination]) {
       if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180) {
@@ -112,7 +122,8 @@ export const planRoutes = action({
     for (const option of options.slice(0, 3)) {
       const candidate = await route([origin, ...option.waypoints, destination]);
       const extra = Math.round(candidate.minutes) - fastMinutes;
-      if (driveId || extra <= 45 || extra <= fastMinutes * 0.6) { best = option; vibe = candidate; break; }
+      const endsAtDestination = distance(option.waypoints[option.waypoints.length - 1], destination) < 5;
+      if (driveId || extra <= 45 || extra <= fastMinutes * 0.6 || (endsAtDestination && extra <= Math.max(fastMinutes * 0.8, 75))) { best = option; vibe = candidate; break; }
     }
     const fastItems: Item[] = [
       { label: "Freeway the whole way", points: 0, icon: "road.lanes" },
@@ -120,7 +131,7 @@ export const planRoutes = action({
       rush ? { label: "Rush-hour traffic", points: -1, icon: "car.2" } : { label: "Light traffic right now", points: 0, icon: "car.2" },
     ];
     const fastScore = fastItems.reduce((t, i) => t + i.points, 0);
-    const none = { vibe: null, vibeMinutes: null, extraMinutes: null, drive: null, goldenHour: null, goldenHourAt: null, miles: null, scenicItems: [], scenicScore: null, moments: [], leaveAt: null, sunsetAt: null };
+    const none = { vibe: null, vibeMinutes: null, extraMinutes: null, drive: null, goldenHour: null, goldenHourAt: null, miles: null, scenicItems: [], scenicScore: null, moments: [], leaveAt: null, sunsetAt: null, steps: [], meters: null };
     if (!best || !vibe) return { fast: fast.coordinates, fastMinutes, fastItems, fastScore, estimated: fast.estimated, ...none };
     const vibeMinutes = Math.round(vibe.minutes);
     const extraMinutes = Math.max(0, vibeMinutes - fastMinutes);
@@ -152,7 +163,12 @@ export const planRoutes = action({
     }
     const total = cumulative[cumulative.length - 1] || 1;
     const sunsetDay = new Date(`${part("year")}-${part("month")}-${part("day")}T20:00:00Z`);
-    const moments: TimedMoment[] = (drive.moments ?? []).map((moment) => {
+    const nearRoute = (p: Point) => vibe.coordinates.some(([lat, lng]) => distance(p, { lat, lng }) < 0.5);
+    const landmarkMoments = (await ctx.runQuery(internal.drives.listLandmarks, {})).filter(nearRoute)
+      .map((l) => ({ label: l.name, kind: l.kind, lat: l.lat, lng: l.lng, note: l.note, wiki: l.wiki }));
+    const seen = new Set<string>();
+    const merged = [...landmarkMoments, ...(drive.moments ?? [])].filter((m) => !seen.has(m.label.toLowerCase()) && !!seen.add(m.label.toLowerCase()));
+    const moments: TimedMoment[] = merged.map((moment) => {
       let nearest = 0;
       let nearestKm = Infinity;
       vibe.coordinates.forEach(([lat, lng], i) => {
@@ -162,6 +178,7 @@ export const planRoutes = action({
       return { ...moment, points: kindPoints[moment.kind] ?? 1, offsetMinutes: cumulative[nearest] / total * vibe.minutes,
         sunsetAt: (getTimes(sunsetDay, moment.lat, moment.lng).sunset ?? sunset).getTime() };
     }).sort((a, b) => a.offsetMinutes - b.offsetMinutes);
+    await ctx.scheduler.runAfter(0, internal.photos.prefetch, { moments: moments.map(({ label, lat, lng, wiki }) => ({ label, lat, lng, wiki })) });
     await ctx.runMutation(internal.drives.saveSplit, {
       driveId: drive._id, fast: simplify(fast.coordinates, 60), vibe: simplify(vibe.coordinates, 60), extraMinutes, miles, goldenHourAt, vibeScore: scenicScore,
     });
@@ -169,7 +186,7 @@ export const planRoutes = action({
       fast: fast.coordinates, fastMinutes, fastItems, fastScore, estimated: fast.estimated || vibe.estimated,
       vibe: vibe.coordinates, vibeMinutes, extraMinutes, drive, miles, goldenHourAt, scenicItems, scenicScore,
       goldenHour: `Leave at ${leave} to hit ${drive.name} at golden hour`,
-      moments, leaveAt: departure.getTime(), sunsetAt: sunset.getTime(),
+      moments, leaveAt: departure.getTime(), sunsetAt: sunset.getTime(), steps: vibe.steps, meters: vibe.meters,
     };
   },
 });

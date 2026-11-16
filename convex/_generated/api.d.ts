@@ -9,6 +9,8 @@
  */
 
 import type * as drives from "../drives.js";
+import type * as landmarks from "../landmarks.js";
+import type * as photos from "../photos.js";
 import type * as routes from "../routes.js";
 import type * as simplify from "../simplify.js";
 
@@ -20,6 +22,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   drives: typeof drives;
+  landmarks: typeof landmarks;
+  photos: typeof photos;
   routes: typeof routes;
   simplify: typeof simplify;
 }>;

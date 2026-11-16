@@ -199,24 +199,33 @@ function play(){
   var startBearing=bearing(vibe[0],vibe[Math.min(vibe.length-1,5)]);
   placeCar(vibe[0],startBearing);
   var token={};playback=token;
-  var zoom=Math.max(10.5,Math.min(14.5,14-Math.log(total/15000)/Math.LN2));
-  map.easeTo({center:[vibe[0][1],vibe[0][0]],zoom:zoom,pitch:65,bearing:startBearing,duration:1200});
+  var zoom=Math.max(13,Math.min(16,15.6-Math.log(Math.max(1,total/20000))/Math.LN2*0.6));
+  var along=moms.map(function(mo){var n=0,best=Infinity;for(var i=0;i<vibe.length;i++){var dd=dist(vibe[i],[mo.lat,mo.lng]);if(dd<best){best=dd;n=i}}return cum[n]});
+  map.easeTo({center:[vibe[0][1],vibe[0][0]],zoom:zoom,pitch:65,bearing:startBearing,duration:1500});
   setTimeout(function(){
     if(playback!==token)return;
-    var p={cum:cum,seg:1},la={cum:cum,seg:1},cam=startBearing,t0=performance.now(),look=Math.min(600,total*0.04);
+    var p={cum:cum,seg:1},la={cum:cum,seg:1},cam=startBearing,orbit=0,ease=0,mult=1,d=0,last=performance.now(),lastPost=0;
+    var speed=total/82,look=Math.max(120,Math.min(600,speed*1.5));
     var frame=function(now){
       if(playback!==token)return;
-      var prog=Math.min(1,(now-t0)/20000),d=total*prog;
+      var dt=Math.min(0.05,(now-last)/1000);last=now;
+      var active=-1;for(var k=0;k<along.length;k++){var gap=along[k]-d;if(gap<800&&gap>-250){active=k;break}}
+      mult+=((active>=0?0.5:1)-mult)*0.03;ease+=((active>=0?1:0)-ease)*0.03;
+      d=Math.min(total,d+speed*mult*dt);
       var pos=at(p,d),ahead=at(la,Math.min(total,d+look));
       var hd=dist(pos,ahead)>1?bearing(pos,ahead):cam;
-      cam=(cam+(((hd-cam+540)%360)-180)*0.05+360)%360;
+      cam=(cam+(((hd-cam+540)%360)-180)*0.04+360)%360;
+      var want=0;if(active>=0){var mo=moms[active];var rel=((bearing(pos,[mo.lat,mo.lng])-cam+540)%360)-180;want=rel>0?20:-20}
+      orbit+=(want-orbit)*0.03;
       placeCar(pos,hd);
-      map.jumpTo({center:[pos[1],pos[0]],bearing:cam,pitch:65,zoom:zoom});
-      if(prog<1)requestAnimationFrame(frame);else playback=null;
+      map.jumpTo({center:[pos[1],pos[0]],bearing:(cam+orbit+360)%360,pitch:65,zoom:zoom-0.6*ease});
+      if(now-lastPost>250||d>=total){lastPost=now;post({type:'nav',p:d/total,m:active,done:d>=total})}
+      if(d<total)requestAnimationFrame(frame);else playback=null;
     };
     requestAnimationFrame(frame);
-  },1250);
+  },1600);
 }
+function stopPlay(){playback=null;fit()}
 
 function around(mo){
   if(vibe.length<2)return [];
@@ -247,6 +256,7 @@ function receive(event){
   var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}
   if(!data||typeof data!=='object')return;
   if(data.type==='play'){if(ready)play();return}
+  if(data.type==='stop'){if(ready)stopPlay();return}
   if(data.type==='me'){if(ready)placeMe(data);else pendingMe=data;return}
   if(data.type==='locate'){if(ready)locate();return}
   if(data.type==='moments'){if(ready)setMoments(data.moments);else pendingMoments=data.moments;return}

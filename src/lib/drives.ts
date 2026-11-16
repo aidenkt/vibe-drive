@@ -24,6 +24,6 @@ export const regionGroup = (drive: Doc<'drives'>): RegionGroup =>
   /San Francisco/.test(drive.region) ? 'SF' : /Los Angeles/.test(drive.region) ? 'LA' : 'San Diego';
 
 export const photoCredits = credits;
-export const drivePhoto = (drive: Doc<'drives'>) => photos[drive.name]?.source;
+export const drivePhoto = (drive: Doc<'drives'>) => photos[drive.name]?.source ?? (drive.photoUrl ? { uri: drive.photoUrl } : undefined);
 export const serialCity = (drive: Doc<'drives'>) => drive.region.toUpperCase().replace(/ (COAST|MOUNTAINS|WATERFRONT)$/, '').replace(/^NORTH COUNTY /, '');
 export const inSeedOrder = (drives: Doc<'drives'>[]) => [...drives].sort((a, b) => a._creationTime - b._creationTime);
