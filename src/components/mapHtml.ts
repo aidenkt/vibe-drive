@@ -1,37 +1,165 @@
 export const mapHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.1/dist/maplibre-gl.css">
 <style>
-*{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:#4ea2dc}body{font-family:monospace}.leaflet-container{background:#4ea2dc;outline:0}.leaflet-tile-pane{image-rendering:pixelated}.leaflet-tile{image-rendering:pixelated}.leaflet-control-attribution{font:8px/1.5 monospace!important;background:#fff9e9dd!important;color:#657667!important;letter-spacing:.2px}.leaflet-control-attribution a{color:#536a60!important}.leaflet-bottom{bottom:3px}.pixel-marker{background:none;border:0}.car{width:40px;height:40px;filter:drop-shadow(3px 4px 0 #33474755);image-rendering:pixelated}.flag{filter:drop-shadow(2px 2px 0 #33474744);image-rendering:pixelated}.geo-label{white-space:nowrap;color:#66785c;font:bold 10px/1.4 monospace;letter-spacing:2px;text-shadow:1px 1px #fff8e1,-1px -1px #fff8e1;pointer-events:none;text-align:center}.geo-label.city{font-size:12px;letter-spacing:3px;color:#546349}.geo-label.ocean{color:#598e98;letter-spacing:4px;font-size:10px;transform:rotate(-23deg);text-shadow:1px 1px #c3e5e2}.geo-label.small{font-size:8px;letter-spacing:1.5px;color:#7c8666}.map-texture{position:absolute;inset:0;z-index:450;pointer-events:none;background-image:linear-gradient(#fff4 1px,transparent 1px);background-size:4px 4px;opacity:.13}.compass{position:absolute;right:19px;top:250px;z-index:480;pointer-events:none;color:#546b60;text-align:center;font:bold 9px monospace;letter-spacing:1px}.compass svg{display:block;margin:6px auto;filter:drop-shadow(2px 2px 0 #fff9)}#routes{position:absolute;inset:0;z-index:420;pointer-events:none;image-rendering:pixelated}.leaflet-marker-pane{z-index:460}.leaflet-tooltip{font-family:monospace}
+*{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:#f7f7f5}
+.maplibregl-canvas{image-rendering:crisp-edges;image-rendering:pixelated}
+.maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important}
+.attrib{position:absolute;left:0;right:0;bottom:2px;text-align:center;font:7px/1.4 monospace;color:#8a8a8a;pointer-events:none;z-index:5;letter-spacing:.2px}
+.car{width:40px;height:40px;filter:drop-shadow(3px 4px 0 #14110f55)}
+.car svg{width:40px;height:40px;display:block}
+.pin{width:14px;height:14px;border-radius:50%;background:#F2EADB;border:3px solid #14110F}
 </style></head><body>
-
-<div id="map" aria-label="Pixel road map of Southern California"></div><div class="map-texture"></div>
-<div class="compass">N<svg width="24" height="32" viewBox="0 0 12 16" shape-rendering="crispEdges"><path d="M5 0h2v3h2v4h2v7H7v2H5v-2H1V7h2V3h2z" fill="#fff7df"/><path d="M5 2h2v3h2v6H7V9H5v2H3V5h2z" fill="#536e61"/><path d="M5 9h2v5H5z" fill="#a6b99a"/></svg></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div id="map"></div><div class="attrib">OpenFreeMap &copy; OpenMapTiles &copy; OpenStreetMap</div>
+<script src="https://unpkg.com/maplibre-gl@5.24.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
 'use strict';
-var map=L.map('map',{zoomControl:false,attributionControl:true,preferCanvas:true,minZoom:5,maxZoom:18,zoomSnap:.5}).setView([32.7157,-117.1611],12);
-map.attributionControl.setPrefix(false);
-var palette=[[59,127,191],[78,162,220],[140,200,108],[233,215,160],[255,245,214]];
-var PixelTiles=L.TileLayer.extend({createTile:function(coords,done){var tile=document.createElement('canvas');var img=new Image();img.crossOrigin='anonymous';img.onload=function(){var n=img.width;tile.width=n;tile.height=n;var g=tile.getContext('2d');g.drawImage(img,0,0);try{var data=g.getImageData(0,0,n,n),px=data.data;for(var i=0;i<px.length;i+=4){var l=.2126*px[i]+.7152*px[i+1]+.0722*px[i+2];var c=palette[l<192?0:l<224?1:l<236?2:l<246?3:4];px[i]=c[0];px[i+1]=c[1];px[i+2]=c[2]}g.putImageData(data,0,0)}catch(e){}done(null,tile)};img.onerror=function(e){done(e,tile)};img.src=this.getTileUrl(coords);return tile}});
-new PixelTiles('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles &copy; Esri &middot; &copy; OpenStreetMap contributors',maxNativeZoom:16,tileSize:1024,zoomOffset:-2,maxZoom:20,detectRetina:false}).addTo(map).addTo(map);
-function label(lat,lng,text,kind,width){L.marker([lat,lng],{interactive:false,icon:L.divIcon({className:'pixel-marker',html:'<div class="geo-label '+kind+'">'+text+'</div>',iconSize:[width,20],iconAnchor:[width/2,10]})}).addTo(map)}
-label(32.723,-117.157,'SAN DIEGO','city',140);label(34.0522,-118.2437,'LOS ANGELES','city',180);label(33.35,-118.0,'PACIFIC OCEAN','ocean',200);label(32.851,-117.264,'LA JOLLA','',100);label(33.1959,-117.3795,'OCEANSIDE','',110);label(33.6595,-117.9988,'HUNTINGTON BEACH','small',160);label(33.426,-117.612,'SAN CLEMENTE','small',130);label(32.578,-117.06,'TIJUANA','small',85);label(32.69,-117.178,'CORONADO','small',90);
-var canvas=document.createElement('canvas');canvas.id='routes';map.getContainer().appendChild(canvas);var ctx=canvas.getContext('2d');
-var fast=[],vibe=[],car=null,flags=[],playback=null,carPosition=null,lastFrame=0,follow=true;
-var carSvg='<svg class="car" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path d="M4 1h8v1h1v2h1v9h-1v2H3v-2H2V4h1V2h1z" fill="#293c43"/><path d="M4 2h8v3h1v7h-1v2H4v-2H3V5h1z" fill="#ffbd47"/><path d="M5 4h6v3H5z" fill="#b9ebeb"/><path d="M5 4h2v3H5z" fill="#eff9df"/><path d="M4 8h8v3H4z" fill="#f5853c"/><path d="M5 11h6v2H5z" fill="#4b7880"/><path d="M3 3h2v2H3zm8 0h2v2h-2z" fill="#fff7c4"/><path d="M3 12h2v2H3zm8 0h2v2h-2z" fill="#e95467"/></svg>';
-function makeCar(point){if(car)map.removeLayer(car);car=L.marker(point,{interactive:false,zIndexOffset:1000,icon:L.divIcon({className:'pixel-marker',html:carSvg,iconSize:[40,40],iconAnchor:[20,20]})}).addTo(map);carPosition=point}
-function flag(point,start){var fill=start?'#92b36a':'#e96d88';var svg='<svg class="flag" width="28" height="36" viewBox="0 0 14 18" shape-rendering="crispEdges"><path d="M2 1h2v15H2zM0 16h7v2H0z" fill="#3d534c"/><path d="M4 1h9v9H4z" fill="#3d534c"/><path d="M4 2h8v6H4z" fill="'+fill+'"/><path d="M4 2h2v2H4zm4 0h2v2H8zM6 4h2v2H6zm4 0h2v2h-2zM4 6h2v2H4zm4 0h2v2H8z" fill="#fff3d4"/></svg>';flags.push(L.marker(point,{interactive:false,icon:L.divIcon({className:'pixel-marker',html:svg,iconSize:[28,36],iconAnchor:[6,36]})}).addTo(map))}
-function resize(){var size=map.getSize();var dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=size.x*dpr;canvas.height=size.y*dpr;canvas.style.width=size.x+'px';canvas.style.height=size.y+'px';ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;draw(performance.now())}
-function pixels(route){return route.map(function(p){var q=map.latLngToContainerPoint(p);return {x:Math.round(q.x/4)*4,y:Math.round(q.y/4)*4}})}
-function path(points,color,width,dash,offset){if(points.length<2)return;ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='square';ctx.lineJoin='miter';ctx.setLineDash(dash||[]);ctx.lineDashOffset=offset||0;ctx.moveTo(points[0].x,points[0].y);for(var i=1;i<points.length;i++){ctx.lineTo(points[i].x,points[i-1].y);ctx.lineTo(points[i].x,points[i].y)}ctx.stroke();ctx.setLineDash([])}
-function draw(time){var size=map.getSize();ctx.clearRect(0,0,size.x,size.y);var a=pixels(fast),b=pixels(vibe);path(a,'#fff7e7',10);path(a,'#9a9d92',6,[8,8]);path(b,'#55475b',14);path(b,'#fff1d4',10);path(b,'#ea6b9a',8);path(b,'#ffb75b',8,[8,16],-Math.floor(time/140)*4)}
-function fit(){var points=vibe.length?vibe:fast;if(!points.length)return;var h=map.getSize().y;var tall=h>700;map.fitBounds(L.latLngBounds(points),{paddingTopLeft:[48,tall?250:150],paddingBottomRight:[48,tall?450:300],maxZoom:14,animate:true,duration:1})}
-function valid(points){return Array.isArray(points)?points.filter(function(p){return Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180}).map(function(p){return [p[0],p[1]]}):[]}
-function play(){if(vibe.length<2)return;var distances=[0];for(var i=1;i<vibe.length;i++)distances.push(distances[i-1]+map.distance(vibe[i-1],vibe[i]));if(!distances[distances.length-1])return;map.stop();follow=true;makeCar(vibe[0]);playback={start:performance.now()+900,distances:distances,total:distances[distances.length-1],segment:1,lastPan:0};map.flyTo(vibe[0],Math.max(12,Math.min(15,map.getZoom()+1)),{duration:.9})}
-function receive(event){var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}if(!data||typeof data!=='object')return;if(data.type==='play'){play();return}if(!Array.isArray(data.fast)&&!Array.isArray(data.vibe))return;playback=null;map.stop();fast=valid(data.fast);vibe=valid(data.vibe);flags.forEach(function(f){map.removeLayer(f)});flags=[];if(car){map.removeLayer(car);car=null}var route=vibe.length?vibe:fast;var waypoints=data.drive&&Array.isArray(data.drive.waypoints)?valid(data.drive.waypoints.map(function(p){return p&&[p.lat,p.lng]})):[];if(route.length){makeCar(route[0]);flag(waypoints[0]||route[0],true);flag(waypoints[waypoints.length-1]||route[route.length-1],false);fit()}draw(performance.now())}
-function tick(time){if(time-lastFrame>32){lastFrame=time;if(playback&&time>=playback.start){var p=playback;var progress=Math.min(1,(time-p.start)/20000);var distance=p.total*progress;while(p.segment<p.distances.length-1&&p.distances[p.segment]<distance)p.segment++;var i=p.segment;var length=p.distances[i]-p.distances[i-1];var t=length?(distance-p.distances[i-1])/length:1;var a=vibe[i-1],b=vibe[i];carPosition=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];car.setLatLng(carPosition);if(follow&&time-p.lastPan>650){map.panTo(carPosition,{animate:true,duration:.65,noMoveStart:true});p.lastPan=time}if(progress===1)playback=null}draw(time)}requestAnimationFrame(tick)}
-map.on('move zoom viewreset',function(){draw(performance.now())});map.on('resize',resize);map.on('dragstart',function(){follow=false});window.addEventListener('resize',function(){map.invalidateSize();resize()});window.addEventListener('message',receive);document.addEventListener('message',receive);resize();requestAnimationFrame(tick);map.whenReady(function(){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify({type:'ready'}))});
+var STYLE='https://tiles.openfreemap.org/styles/positron';
+var DEM='https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+var WHITE='#ffffff',OFF='#f7f7f5',WATER='#7fb2ff',ROAD='#d6d6d6',HIGHWAY='#bdbdbd';
+var carSvg='<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path d="M4 1h8v1h1v2h1v9h-1v2H3v-2H2V4h1V2h1z" fill="#293c43"/><path d="M4 2h8v3h1v7h-1v2H4v-2H3V5h1z" fill="#ffbd47"/><path d="M5 4h6v3H5z" fill="#b9ebeb"/><path d="M5 4h2v3H5z" fill="#eff9df"/><path d="M4 8h8v3H4z" fill="#f5853c"/><path d="M5 11h6v2H5z" fill="#4b7880"/><path d="M3 3h2v2H3zm8 0h2v2h-2z" fill="#fff7c4"/><path d="M3 12h2v2H3zm8 0h2v2h-2z" fill="#e95467"/></svg>';
+var map=null,ready=false,pending=null,fast=[],vibe=[],pins=[],car=null,drawAnim=null,playback=null;
+
+function post(o){try{if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(o))}catch(e){}}
+
+function restyle(style){
+  style.layers=style.layers.filter(function(l){return l.type!=='symbol'&&l.type!=='raster'&&!/^boundary/.test(l.id)&&!/railway/.test(l.id)});
+  style.layers.forEach(function(l){
+    var p=l.paint=l.paint||{};var sl=l['source-layer'];
+    if(l.type==='background'){p['background-color']=OFF;return}
+    if(sl==='water'&&l.type==='fill'){p['fill-color']=WATER;p['fill-opacity']=1;p['fill-antialias']=false;return}
+    if(sl==='waterway'){p['line-color']=WATER;p['line-opacity']=1;return}
+    if(l.type==='fill'){p['fill-color']=l.id==='landuse_residential'?OFF:WHITE;p['fill-opacity']=1;if(p['fill-outline-color'])p['fill-outline-color']=OFF;return}
+    if(l.type==='line'&&(sl==='transportation'||sl==='aeroway')){
+      p['line-color']=/motorway|trunk/.test(l.id)?HIGHWAY:ROAD;
+      if(/subtle/.test(l.id))p['line-opacity']=0.6;
+    }
+  });
+  if(style.sources.openmaptiles){
+    style.layers.push({id:'buildings-3d',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,paint:{'fill-extrusion-color':WHITE,'fill-extrusion-height':['coalesce',['get','render_height'],0],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':0.9}});
+  }
+  style.sources.demTerrain={type:'raster-dem',tiles:[DEM],encoding:'terrarium',tileSize:256,maxzoom:14};
+  style.sources.demShade={type:'raster-dem',tiles:[DEM],encoding:'terrarium',tileSize:256,maxzoom:14};
+  var water=style.layers.filter(function(l){return l['source-layer']==='water'});
+  style.layers=style.layers.filter(function(l){return l['source-layer']!=='water'});
+  var idx=style.layers.findIndex(function(l){return l.type==='line'});
+  if(idx<0)idx=style.layers.length;
+  Array.prototype.splice.apply(style.layers,[idx,0].concat(water));
+  style.layers.splice(idx,0,{id:'hillshade',type:'hillshade',source:'demShade',paint:{'hillshade-shadow-color':'#9a9a9a','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#c8c8c8','hillshade-exaggeration':0.5}});
+  style.terrain={source:'demTerrain',exaggeration:1.6};
+  style.sky={'sky-color':'#dfe9ff','horizon-color':'#ffffff','fog-color':'#ffffff','sky-horizon-blend':0.6,'horizon-fog-blend':0.6,'fog-ground-blend':0.97,'atmosphere-blend':0};
+  return style;
+}
+
+function flatStyle(){return {version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':OFF}}]}}
+
+function emptyLine(){return {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}}}
+function lineOf(pts){return {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:pts.map(function(p){return [p[1],p[0]]})}}}
+function gradient(t){t=Math.max(0.0001,Math.min(0.9999,t));return ['step',['line-progress'],'#ff5a1f',t,'rgba(255,90,31,0)']}
+
+function addRouteLayers(){
+  map.addSource('fast',{type:'geojson',data:emptyLine()});
+  map.addSource('vibe',{type:'geojson',data:emptyLine(),lineMetrics:true});
+  map.addLayer({id:'fast-line',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#9e9e9e','line-width':4,'line-dasharray':[2,1.5]}});
+  map.addLayer({id:'vibe-line',type:'line',source:'vibe',layout:{'line-join':'round','line-cap':'round'},paint:{'line-width':6,'line-gradient':gradient(1)}});
+}
+
+function create(style){
+  try{
+    map=new maplibregl.Map({container:'map',style:style,center:[-117.1611,32.7157],zoom:11,pitch:60,bearing:-20,maxPitch:85,pixelRatio:0.35,attributionControl:false,antialias:false,fadeDuration:0});
+  }catch(e){map=null;post({type:'ready'});return}
+  map.on('error',function(e){if(window.console)console.warn('map error',e&&e.error&&e.error.message)});
+  map.on('load',function(){
+    try{addRouteLayers()}catch(e){}
+    ready=true;post({type:'ready'});
+    if(pending){var d=pending;pending=null;draw(d)}
+  });
+}
+
+function valid(points){return Array.isArray(points)?points.filter(function(p){return Array.isArray(p)&&p.length>=2&&isFinite(p[0])&&isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180}).map(function(p){return [+p[0],+p[1]]}):[]}
+
+function pin(p){var el=document.createElement('div');el.className='pin';pins.push(new maplibregl.Marker({element:el,opacityWhenCovered:'1'}).setLngLat([p[1],p[0]]).addTo(map))}
+
+function placeCar(p,heading){
+  if(!car){var el=document.createElement('div');el.className='car';el.innerHTML=carSvg;car=new maplibregl.Marker({element:el,rotationAlignment:'map',pitchAlignment:'viewport',opacityWhenCovered:'1'}).setLngLat([p[1],p[0]]).addTo(map)}
+  car.setLngLat([p[1],p[0]]);if(heading!=null)car.setRotation(heading);
+}
+
+function fit(){
+  var all=fast.concat(vibe);if(!all.length)return;
+  var b=new maplibregl.LngLatBounds();all.forEach(function(p){b.extend([p[1],p[0]])});
+  try{map.fitBounds(b,{padding:{top:170,bottom:380,left:40,right:40},pitch:55,bearing:-20,maxZoom:14,duration:1200})}catch(e){map.fitBounds(b,{padding:40})}
+}
+
+function rad(d){return d*Math.PI/180}
+function dist(a,b){var dLat=rad(b[0]-a[0]),dLng=rad(b[1]-a[1]);var h=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)*Math.sin(dLng/2);return 12742000*Math.asin(Math.sqrt(h))}
+function bearing(a,b){var y=Math.sin(rad(b[1]-a[1]))*Math.cos(rad(b[0]));var x=Math.cos(rad(a[0]))*Math.sin(rad(b[0]))-Math.sin(rad(a[0]))*Math.cos(rad(b[0]))*Math.cos(rad(b[1]-a[1]));return (Math.atan2(y,x)*180/Math.PI+360)%360}
+
+function draw(data){
+  playback=null;if(drawAnim)cancelAnimationFrame(drawAnim);drawAnim=null;map.stop();
+  fast=valid(data.fast);vibe=valid(data.vibe);
+  pins.forEach(function(m){m.remove()});pins=[];
+  if(map.getSource('fast'))map.getSource('fast').setData(fast.length?lineOf(fast):emptyLine());
+  if(map.getSource('vibe'))map.getSource('vibe').setData(vibe.length?lineOf(vibe):emptyLine());
+  var route=vibe.length?vibe:fast;
+  var wps=data.drive&&Array.isArray(data.drive.waypoints)?valid(data.drive.waypoints.map(function(p){return p&&[p.lat,p.lng]})):[];
+  if(wps.length){pin(wps[0]);pin(wps[wps.length-1])}
+  if(route.length){pin(route[route.length-1]);placeCar(route[0],route.length>1?bearing(route[0],route[Math.min(route.length-1,5)]):0)}
+  fit();
+  if(map.getLayer('vibe-line')){
+    var start=performance.now();
+    var step=function(now){var t=Math.min(1,(now-start)/1200);map.setPaintProperty('vibe-line','line-gradient',gradient(t));drawAnim=t<1?requestAnimationFrame(step):null};
+    map.setPaintProperty('vibe-line','line-gradient',gradient(0));drawAnim=requestAnimationFrame(step);
+  }
+}
+
+function at(p,d){
+  while(p.seg<p.cum.length-1&&p.cum[p.seg]<d)p.seg++;
+  var i=p.seg,len=p.cum[i]-p.cum[i-1],t=len?(d-p.cum[i-1])/len:1,a=vibe[i-1],b=vibe[i];
+  return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+}
+
+function play(){
+  if(!map||vibe.length<2)return;
+  var cum=[0];for(var i=1;i<vibe.length;i++)cum.push(cum[i-1]+dist(vibe[i-1],vibe[i]));
+  var total=cum[cum.length-1];if(!total)return;
+  if(drawAnim){cancelAnimationFrame(drawAnim);drawAnim=null;map.setPaintProperty('vibe-line','line-gradient',gradient(1))}
+  map.stop();
+  var startBearing=bearing(vibe[0],vibe[Math.min(vibe.length-1,5)]);
+  placeCar(vibe[0],startBearing);
+  var token={};playback=token;
+  var zoom=Math.max(10.5,Math.min(14.5,14-Math.log(total/15000)/Math.LN2));
+  map.easeTo({center:[vibe[0][1],vibe[0][0]],zoom:zoom,pitch:65,bearing:startBearing,duration:1200});
+  setTimeout(function(){
+    if(playback!==token)return;
+    var p={cum:cum,seg:1},la={cum:cum,seg:1},cam=startBearing,t0=performance.now(),look=Math.min(600,total*0.04);
+    var frame=function(now){
+      if(playback!==token)return;
+      var prog=Math.min(1,(now-t0)/20000),d=total*prog;
+      var pos=at(p,d),ahead=at(la,Math.min(total,d+look));
+      var hd=dist(pos,ahead)>1?bearing(pos,ahead):cam;
+      cam=(cam+(((hd-cam+540)%360)-180)*0.05+360)%360;
+      placeCar(pos,hd);
+      map.jumpTo({center:[pos[1],pos[0]],bearing:cam,pitch:65,zoom:zoom});
+      if(prog<1)requestAnimationFrame(frame);else playback=null;
+    };
+    requestAnimationFrame(frame);
+  },1250);
+}
+
+function receive(event){
+  var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}
+  if(!data||typeof data!=='object')return;
+  if(data.type==='play'){if(ready)play();return}
+  if(!Array.isArray(data.fast)&&!Array.isArray(data.vibe))return;
+  if(!ready){pending=data;return}
+  draw(data);
+}
+window.addEventListener('message',receive);document.addEventListener('message',receive);
+
+var gl=null;try{var c=document.createElement('canvas');gl=c.getContext('webgl2')||c.getContext('webgl')}catch(e){}
+if(!window.maplibregl||!gl){post({type:'ready'});return}
+fetch(STYLE).then(function(r){return r.json()}).then(function(s){var out;try{out=restyle(s)}catch(e){out=flatStyle()}create(out)}).catch(function(){create(flatStyle())});
 })();
 </script></body></html>`;
