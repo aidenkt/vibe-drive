@@ -5,7 +5,7 @@ import { Doc } from '../../convex/_generated/dataModel';
 import { drivePhoto, passColors, passFonts, serialCity } from '../lib/drives';
 import { RouteSplit } from './RouteSplit';
 
-export type PassSplit = { fast: number[][]; vibe: number[][]; extraMinutes?: number; miles?: number; goldenHourAt?: string };
+export type PassSplit = { fast: number[][]; vibe: number[][]; extraMinutes?: number; miles?: number; goldenHourAt?: string; vibeScore?: number };
 type Props = {
   drive: Doc<'drives'>;
   serial: number;
@@ -59,7 +59,7 @@ export const DrivePass = forwardRef<ComponentRef<typeof View>, Props>(function D
   const gradientId = useId().replace(/[^a-zA-Z0-9]/g, '');
   const stampSize = (mini ? 76 : 96) * s;
   const splitHeight = (mini ? 64 : 92) * s;
-  const data = [split.miles !== undefined && `${split.miles} MI`, split.extraMinutes !== undefined && `+${split.extraMinutes} MIN`, split.goldenHourAt && `GOLDEN HOUR ${split.goldenHourAt}`].filter(Boolean).join(' · ');
+  const data = [split.vibeScore !== undefined && `SCENIC ${split.vibeScore}`, split.extraMinutes !== undefined && `+${split.extraMinutes} MIN`, split.goldenHourAt && `GOLDEN HOUR ${split.goldenHourAt}`].filter(Boolean).join(' · ');
   return <View ref={ref} collapsable={false} style={{ width, height, backgroundColor: passColors.ink, overflow: 'hidden' }}>
     <View style={{ height: photoHeight, overflow: 'hidden' }}>
       <Image source={drivePhoto(drive)} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -70,6 +70,10 @@ export const DrivePass = forwardRef<ComponentRef<typeof View>, Props>(function D
         <Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={passColors.ink} stopOpacity={0} /><Stop offset="1" stopColor={passColors.ink} stopOpacity={1} /></LinearGradient></Defs>
         <Rect width={width} height={40 * s} fill={`url(#${gradientId})`} />
       </Svg>
+      {!mini && <View style={{ position: 'absolute', top: 80 * s, left: 20 * s, flexDirection: 'row', alignItems: 'center', gap: 8 * s }}>
+        <Image source={require('../../assets/brand/icon-1024.png')} style={{ width: 28 * s, height: 28 * s, borderRadius: 7 * s }} />
+        <Text style={[styles.serial, { position: 'relative', fontSize: 11 * s, letterSpacing: 2 * s }]}>SCENIC ROUTE</Text>
+      </View>}
       <Text style={[styles.serial, { top: (mini ? 16 : 84) * s, right: 20 * s, fontSize: 10 * s, letterSpacing: 1.5 * s }]}>
         NO. {pad(serial)} / {pad(total)} · {serialCity(drive)}
       </Text>

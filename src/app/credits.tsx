@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, Pressable, Linking, StyleSheet } from 'react-native';
+import { Image, ScrollView, Text, View, Pressable, Linking, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { passColors, passFonts, photoCredits } from '../lib/drives';
@@ -6,6 +6,10 @@ import { passColors, passFonts, photoCredits } from '../lib/drives';
 export default function Credits() {
   const insets = useSafeAreaInsets();
   return <ScrollView style={{ flex: 1, backgroundColor: passColors.ink }} contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 32 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+      <Image source={require('../../assets/brand/icon-1024.png')} style={{ width: 28, height: 28, borderRadius: 7 }} />
+      <Text style={{ color: passColors.paper, fontFamily: passFonts.serif, fontSize: 24 }}>Scenic Route</Text>
+    </View>
     <View style={styles.head}>
       <Text style={styles.title}>Photo credits</Text>
       <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12}><Text style={styles.close}>CLOSE</Text></Pressable>

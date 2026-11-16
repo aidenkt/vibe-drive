@@ -1,20 +1,21 @@
 {
   "expo": {
-    "name": "Vibe Drive",
-    "slug": "vibe-drive",
+    "name": "Scenic Route",
+    "slug": "scenic-route",
     "scheme": "vibedrive",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand/icon-1024.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.vibedrive.app"
+      "bundleIdentifier": "com.vibedrive.app",
+      "icon": "./assets/brand/icon-1024.png"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
+        "foregroundImage": "./assets/brand/icon-1024.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
@@ -28,7 +29,17 @@
       "expo-status-bar",
       "expo-font",
       "expo-sharing",
-      ["expo-location", { "locationWhenInUsePermission": "Vibe Drive starts scenic routes from where you are." }]
-    ]
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Scenic Route starts scenic routes from where you are."
+        }
+      ]
+    ],
+    "splash": {
+      "image": "./assets/brand/icon-1024.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#14110F"
+    }
   }
 }
