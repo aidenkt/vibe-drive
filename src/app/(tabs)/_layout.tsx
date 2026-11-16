@@ -1,9 +1,17 @@
 import { Tabs } from 'expo-router';
-import { colors, PixelText } from '../../components/ui';
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../../components/ui';
 
 export default function TabsLayout() {
-  return <Tabs screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.border, borderTopWidth: 2, height: 84, paddingTop: 8 }, tabBarActiveTintColor: colors.pink, tabBarInactiveTintColor: colors.muted, tabBarLabelStyle: { fontFamily: 'PressStart2P_400Regular', fontSize: 8 }, sceneStyle: { backgroundColor: colors.bg } }}>
-    <Tabs.Screen name="index" options={{ title: 'EXPLORE', tabBarIcon: ({ color }) => <PixelText style={{ color, fontSize: 17 }}>✦</PixelText> }} />
-    <Tabs.Screen name="drives" options={{ title: 'DRIVES', tabBarIcon: ({ color }) => <PixelText style={{ color, fontSize: 17 }}>≡</PixelText> }} />
+  return <Tabs screenOptions={{
+    headerShown: false,
+    tabBarActiveTintColor: theme.accent,
+    tabBarInactiveTintColor: theme.faint,
+    tabBarStyle: { backgroundColor: theme.white, borderTopColor: theme.hairline, borderTopWidth: 0.5 },
+    tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
+    sceneStyle: { backgroundColor: theme.white },
+  }}>
+    <Tabs.Screen name="index" options={{ title: 'Map', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color as string} /> }} />
+    <Tabs.Screen name="drives" options={{ title: 'Drives', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'albums' : 'albums-outline'} size={24} color={color as string} /> }} />
   </Tabs>;
 }

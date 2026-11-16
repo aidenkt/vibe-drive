@@ -1,4 +1,4 @@
-import { ComponentRef, forwardRef, useEffect, useId, useRef } from 'react';
+import { ComponentRef, forwardRef, useEffect, useId, useState } from "react";
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText, TextPath } from 'react-native-svg';
 import { Doc } from '../../convex/_generated/dataModel';
@@ -26,7 +26,7 @@ function postmark(at: number) {
 
 function Stamp({ size, drivenAt, serial, animate }: { size: number; drivenAt: number; serial: number; animate?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const progress = useRef(new Animated.Value(animate ? 0 : 1)).current;
+  const [progress] = useState(() => new Animated.Value(animate ? 0 : 1));
   useEffect(() => {
     if (animate) Animated.spring(progress, { toValue: 1, friction: 5, tension: 70, delay: 250, useNativeDriver: true }).start();
   }, [animate, progress]);
