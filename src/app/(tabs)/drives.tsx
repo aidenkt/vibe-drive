@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ScrollView, View, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { colors, PixelText } from '../components/ui';
+import { api } from '../../../convex/_generated/api';
+import { colors, PixelText } from '../../components/ui';
 
 export default function Drives() {
   const insets = useSafeAreaInsets();

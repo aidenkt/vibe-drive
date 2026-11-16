@@ -1,12 +1,14 @@
 import { useRef, useState , ComponentType, Ref } from 'react';
 import { View, Pressable, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAction } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
+import { router } from 'expo-router';
+import { useHandle } from '../../lib/handle';
 import { FunctionReturnType } from 'convex/server';
 import { WebView as RNWebView, WebViewMessageEvent, WebViewProps } from 'react-native-webview';
-import { api } from '../../convex/_generated/api';
-import { mapHtml } from '../components/mapHtml';
-import { colors, PixelText } from '../components/ui';
+import { api } from '../../../convex/_generated/api';
+import { mapHtml } from '../../components/mapHtml';
+import { colors, PixelText } from '../../components/ui';
 
 const destinations = { 'LOS ANGELES': { lat: 34.0522, lng: -118.2437 }, JULIAN: { lat: 33.0787, lng: -116.6019 } };
 const duration = (minutes: number) => `${Math.floor(minutes / 60)}:${String(Math.round(minutes) % 60).padStart(2, '0')}`;
@@ -18,6 +20,8 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const web = useRef<WebViewHandle>(null);
   const planRoutes = useAction(api.routes.planRoutes);
+  const markDriven = useMutation(api.drives.markDriven);
+  const handle = useHandle();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -57,6 +61,7 @@ export default function Home() {
         <View style={styles.sun}><PixelText style={{ color: colors.yellow, fontSize: 7, lineHeight: 13 }}>{plan.goldenHour}</PixelText></View>
         {plan.estimated && <PixelText style={styles.estimate}>ESTIMATED ROUTES · ROAD DATA OFFLINE</PixelText>}
         <Pressable accessibilityRole="button" accessibilityLabel="TAKE THE VIBE ROUTE" style={styles.go} onPress={() => { setPlaying(true); send({ type: 'play' }); }}><PixelText style={styles.goText}>{playing ? 'REPLAY THE VIBE ROUTE' : 'TAKE THE VIBE ROUTE'}  →</PixelText></Pressable>
+        {playing && <Pressable accessibilityRole="button" accessibilityLabel="I drove it" disabled={!handle} style={styles.drove} onPress={() => { if (!handle) return; void markDriven({ driveId: plan.drive._id, handle }).then(() => router.push({ pathname: '/pass', params: { driveId: plan.drive._id, stamp: '1' } })).catch(() => setError('Could not save your drive. Try again.')); }}><PixelText style={styles.droveText}>I DROVE IT ✓</PixelText></Pressable>}
       </View> : <View style={styles.card}><PixelText style={styles.intro}>LESS RUSH.{ '\n' }MORE WOW.</PixelText><PixelText style={styles.blurb}>The best part isn’t getting there.</PixelText><PixelText style={{ fontSize: 7, color: colors.green, marginTop: 12 }}>PICK A DESTINATION. FIND YOUR DETOUR. ↑</PixelText></View>}
       <PixelText style={styles.footer}>BUILT FOR THE DRIVE, NOT THE ARRIVAL.</PixelText>
     </View>
@@ -64,5 +69,5 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg }, map: { flex: 1, backgroundColor: '#b9d3bd' }, top: { position: 'absolute', left: 16, right: 16 }, brand: { backgroundColor: colors.bg, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 2, borderColor: colors.border }, logo: { fontSize: 13, color: colors.yellow }, level: { fontSize: 6, color: colors.muted }, search: { marginTop: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 52, backgroundColor: colors.bg, borderColor: colors.ink, borderWidth: 2 }, input: { flex: 1, height: 48, paddingLeft: 12, fontFamily: 'PressStart2P_400Regular', fontSize: 10, color: colors.ink }, shortcuts: { flexDirection: 'row', gap: 8, marginTop: 8 }, quick: { backgroundColor: colors.bg, borderWidth: 2, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 12 }, active: { backgroundColor: colors.yellow, borderColor: colors.yellow }, bottom: { position: 'absolute', bottom: 8, left: 16, right: 16 }, card: { padding: 16, borderColor: colors.border, borderWidth: 2, backgroundColor: colors.bg }, cardEyebrow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }, times: { flexDirection: 'row', borderBottomColor: colors.border, borderBottomWidth: 2, paddingBottom: 12, marginBottom: 12 }, fast: { width: '36%', borderRightWidth: 2, borderColor: colors.border }, vibe: { flex: 1, paddingLeft: 16 }, label: { fontSize: 8, color: colors.muted }, fastTime: { fontSize: 19, lineHeight: 28, color: colors.muted, marginTop: 8 }, vibeTime: { fontSize: 24, lineHeight: 30, color: colors.pink, marginTop: 6 }, vibeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, extra: { fontSize: 7, color: colors.yellow, backgroundColor: '#343026', padding: 4 }, driveName: { fontSize: 9, lineHeight: 17, color: colors.ink }, blurb: { fontSize: 7, lineHeight: 14, color: colors.muted, marginTop: 6 }, sun: { borderLeftWidth: 3, borderColor: colors.yellow, paddingLeft: 9, marginVertical: 12 }, go: { backgroundColor: colors.pink, paddingVertical: 17, alignItems: 'center', borderWidth: 2, borderColor: '#ffb5d8' }, goText: { color: colors.bg, fontSize: 8 }, intro: { fontSize: 22, lineHeight: 35, color: colors.yellow }, footer: { textAlign: 'center', fontSize: 5, marginTop: 6, color: colors.ink, backgroundColor: colors.bg }, notice: { padding: 12, backgroundColor: colors.bg, marginBottom: 8, borderWidth: 2, borderColor: colors.yellow }, loading: { textAlign: 'center', marginTop: 12, fontSize: 8 }, estimate: { color: colors.muted, fontSize: 5, marginBottom: 8 }
+  screen: { flex: 1, backgroundColor: colors.bg }, map: { flex: 1, backgroundColor: '#b9d3bd' }, top: { position: 'absolute', left: 16, right: 16 }, brand: { backgroundColor: colors.bg, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 2, borderColor: colors.border }, logo: { fontSize: 13, color: colors.yellow }, level: { fontSize: 6, color: colors.muted }, search: { marginTop: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 52, backgroundColor: colors.bg, borderColor: colors.ink, borderWidth: 2 }, input: { flex: 1, height: 48, paddingLeft: 12, fontFamily: 'PressStart2P_400Regular', fontSize: 10, color: colors.ink }, shortcuts: { flexDirection: 'row', gap: 8, marginTop: 8 }, quick: { backgroundColor: colors.bg, borderWidth: 2, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 12 }, active: { backgroundColor: colors.yellow, borderColor: colors.yellow }, bottom: { position: 'absolute', bottom: 8, left: 16, right: 16 }, card: { padding: 16, borderColor: colors.border, borderWidth: 2, backgroundColor: colors.bg }, cardEyebrow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }, times: { flexDirection: 'row', borderBottomColor: colors.border, borderBottomWidth: 2, paddingBottom: 12, marginBottom: 12 }, fast: { width: '36%', borderRightWidth: 2, borderColor: colors.border }, vibe: { flex: 1, paddingLeft: 16 }, label: { fontSize: 8, color: colors.muted }, fastTime: { fontSize: 19, lineHeight: 28, color: colors.muted, marginTop: 8 }, vibeTime: { fontSize: 24, lineHeight: 30, color: colors.pink, marginTop: 6 }, vibeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, extra: { fontSize: 7, color: colors.yellow, backgroundColor: '#343026', padding: 4 }, driveName: { fontSize: 9, lineHeight: 17, color: colors.ink }, blurb: { fontSize: 7, lineHeight: 14, color: colors.muted, marginTop: 6 }, sun: { borderLeftWidth: 3, borderColor: colors.yellow, paddingLeft: 9, marginVertical: 12 }, go: { backgroundColor: colors.pink, paddingVertical: 17, alignItems: 'center', borderWidth: 2, borderColor: '#ffb5d8' }, goText: { color: colors.bg, fontSize: 8 }, drove: { marginTop: 8, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: colors.yellow }, droveText: { color: colors.yellow, fontSize: 8 }, intro: { fontSize: 22, lineHeight: 35, color: colors.yellow }, footer: { textAlign: 'center', fontSize: 5, marginTop: 6, color: colors.ink, backgroundColor: colors.bg }, notice: { padding: 12, backgroundColor: colors.bg, marginBottom: 8, borderWidth: 2, borderColor: colors.yellow }, loading: { textAlign: 'center', marginTop: 12, fontSize: 8 }, estimate: { color: colors.muted, fontSize: 5, marginBottom: 8 }
 });
