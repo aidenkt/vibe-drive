@@ -1,10 +1,13 @@
 import { Image, ScrollView, Text, View, Pressable, Linking, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { passColors, passFonts, photoCredits } from '../lib/drives';
 
 export default function Credits() {
   const insets = useSafeAreaInsets();
+  const momentPhotos = useQuery(api.photos.list);
   return <ScrollView style={{ flex: 1, backgroundColor: passColors.ink }} contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 32 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
       <Image source={require('../../assets/brand/icon-1024.png')} style={{ width: 28, height: 28, borderRadius: 7 }} />
@@ -19,6 +22,12 @@ export default function Credits() {
       <Text style={styles.photo}>{credit.title}</Text>
       <Text style={styles.meta}>{credit.author} · {credit.license}</Text>
       <Text style={styles.source} numberOfLines={1}>{credit.source.replace('https://', '')}</Text>
+    </Pressable>)}
+    {momentPhotos?.map((credit) => <Pressable key={credit._id} accessibilityRole="link" onPress={() => credit.source && void Linking.openURL(credit.source)} style={styles.row}>
+      <Text style={styles.drive}>MOMENT</Text>
+      <Text style={styles.photo}>{credit.label}</Text>
+      <Text style={styles.meta}>{credit.author} · {credit.license}</Text>
+      {!!credit.source && <Text style={styles.source} numberOfLines={1}>{credit.source.replace('https://', '')}</Text>}
     </Pressable>)}
   </ScrollView>;
 }

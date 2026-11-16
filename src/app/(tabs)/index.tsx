@@ -1,14 +1,14 @@
 import { ComponentType, Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { FunctionReturnType } from 'convex/server';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { SFSymbol, SymbolView } from 'expo-symbols';
-import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, { FadeInDown, FadeOutUp, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import BottomSheet, { BottomSheetBackgroundProps, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { WebView as RNWebView, WebViewMessageEvent, WebViewProps } from 'react-native-webview';
 import { api } from '../../../convex/_generated/api';
@@ -37,6 +37,38 @@ type Moment = Plan['moments'][number];
 const kindColor: Record<string, string> = { water: '#4fb3d9', bridge: '#ff5a1f', landmark: '#14110F', viewpoint: '#c58b3a', forest: '#3f7d4e', curves: '#8E8E93', beach: '#e9c46a', city: '#6f6a64' };
 const clock = (ms: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms)).replace(/\s?[AP]M$/, '');
 const momentTag = (eta: number, sunset: number): 'golden' | 'sunset' | null => eta >= sunset - 60 * 60_000 && eta < sunset - 10 * 60_000 ? 'golden' : eta >= sunset - 10 * 60_000 && eta <= sunset + 15 * 60_000 ? 'sunset' : null;
+const nowMs = () => Date.now();
+type MomentPhoto = { label: string; url: string | null; author: string; license: string };
+type Step = Plan['steps'][number];
+const kindIcon: Record<string, string> = { water: 'water.waves', bridge: 'road.lanes', landmark: 'building.columns', viewpoint: 'binoculars', forest: 'tree', curves: 'road.lanes.curved.right', beach: 'beach.umbrella', city: 'building.2' };
+const turnIcon = (step?: Step) => {
+  if (!step) return 'arrow.up';
+  if (step.type === 'arrive') return 'mappin.circle.fill';
+  if (step.type === 'merge') return 'arrow.triangle.merge';
+  if (step.type === 'fork') return step.modifier.includes('left') ? 'arrow.triangle.branch' : 'arrow.triangle.branch';
+  if (step.type === 'roundabout' || step.type === 'rotary') return 'arrow.triangle.turn.up.right.circle';
+  if (step.modifier === 'uturn') return 'arrow.uturn.down';
+  if (step.modifier.includes('slight left')) return 'arrow.up.left';
+  if (step.modifier.includes('slight right')) return 'arrow.up.right';
+  if (step.modifier.includes('left')) return 'arrow.turn.up.left';
+  if (step.modifier.includes('right')) return 'arrow.turn.up.right';
+  return 'arrow.up';
+};
+const turnText = (step?: Step) => !step ? 'Continue' : step.type === 'arrive' ? 'Arrive' : step.name || (step.type.includes('ramp') ? 'Take the ramp' : 'Continue');
+const miles = (meters: number) => meters < 160 ? `${Math.max(50, Math.round(meters * 3.28084 / 50) * 50)} ft` : `${(meters / 1609.34).toFixed(meters < 16093 ? 1 : 0)} mi`;
+
+function Polaroid({ photo, label, width }: { photo?: MomentPhoto; label: string; width: number }) {
+  const [shown] = useState(() => new Animated.Value(0));
+  if (!photo?.url) return null;
+  return <View style={{ alignSelf: 'flex-start', marginTop: 10 }}>
+    <View style={[styles.polaroid, { width }]}>
+      <Animated.Image source={{ uri: photo.url }} style={{ width: width - 16, height: (width - 16) * 0.68, backgroundColor: '#eee', opacity: shown }}
+        onLoad={() => Animated.timing(shown, { toValue: 1, duration: 300, useNativeDriver: true }).start()} />
+      <Text numberOfLines={1} style={styles.polaroidLabel}>{label}</Text>
+    </View>
+    <Text numberOfLines={1} style={[styles.credit, { width }]}>{photo.author} · {photo.license}</Text>
+  </View>;
+}
 type PhotonFeature = { geometry: { coordinates: [number, number] }; properties: Record<string, string | undefined> };
 
 function SheetBackground({ style }: BottomSheetBackgroundProps) {
@@ -54,7 +86,7 @@ function ItemRow({ item, index, muted }: { item: Item; index: number; muted?: bo
   </Animated.View>;
 }
 
-function TimelineRow({ moment, eta, tag, last, onPress }: { moment: Moment; eta: number; tag: 'golden' | 'sunset' | null; last: boolean; onPress: () => void }) {
+function TimelineRow({ moment, eta, tag, last, onPress, photo }: { moment: Moment; eta: number; tag: 'golden' | 'sunset' | null; last: boolean; onPress: () => void; photo?: MomentPhoto }) {
   const color = kindColor[moment.kind] ?? theme.ink;
   return <Pressable accessibilityRole="button" accessibilityLabel={`${moment.label} at ${clock(eta)}`} onPress={onPress} style={({ pressed }) => [styles.tlRow, pressed && { opacity: 0.6 }]}>
     <Text style={styles.tlTime}>{clock(eta)}</Text>
@@ -69,6 +101,7 @@ function TimelineRow({ moment, eta, tag, last, onPress }: { moment: Moment; eta:
         <Text style={[styles.tlKind, { color }]}>+{moment.points} {moment.kind}</Text>
         {tag && <View style={[styles.tlChip, { backgroundColor: tag === 'golden' ? '#f2c14e' : theme.accent }]}><Text style={styles.tlChipText}>{tag === 'golden' ? 'GOLDEN HOUR' : 'SUNSET'}</Text></View>}
       </View>
+      <Polaroid photo={photo} label={moment.label} width={170} />
     </View>
   </Pressable>;
 }
@@ -97,6 +130,10 @@ export default function Home() {
   const [mapReady, setMapReady] = useState(false);
   const [plannedAt, setPlannedAt] = useState(0);
   const [goldenStart, setGoldenStart] = useState(false);
+  const [nav, setNav] = useState<{ p: number; m: number; done: boolean; startedAt: number } | null>(null);
+  const momentPhotos = useQuery(api.photos.byLabels, plan?.moments.length ? { labels: plan.moments.map((m) => m.label) } : 'skip');
+  const photoFor = (label: string) => momentPhotos?.find((p) => p.label === label);
+  useEffect(() => { momentPhotos?.forEach((p) => { if (p.url) void Image.prefetch(p.url); }); }, [momentPhotos]);
   const sheetPosition = useSharedValue(0);
   const locateStyle = useAnimatedStyle(() => ({ top: sheetPosition.value - 60 }));
   const tabBar = insets.bottom + 84;
@@ -205,8 +242,28 @@ export default function Home() {
 
   function takeRoute() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPlaying(true); send({ type: 'play' });
-    sheet.current?.snapToIndex(0);
+    setPlaying(true); setNav({ p: 0, m: -1, done: false, startedAt: nowMs() }); send({ type: 'play' });
+    sheet.current?.close();
+  }
+
+  function endRoute() {
+    void Haptics.selectionAsync();
+    setPlaying(false); setNav(null); send({ type: 'stop' });
+    sheet.current?.snapToIndex(1);
+  }
+
+  function onMapMessage(event: WebViewMessageEvent) {
+    let data: { type?: string; p?: number; m?: number; done?: boolean };
+    try { data = JSON.parse(event.nativeEvent.data); } catch { return; }
+    if (data.type === 'ready') { setMapReady(true); if (plan) send(plan); return; }
+    if (data.type !== 'nav') return;
+    setNav((prev) => {
+      if (!prev) return prev;
+      const m = data.m ?? -1;
+      if (m >= 0 && m !== prev.m) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+      if (data.done && !prev.done) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return { ...prev, p: data.p ?? prev.p, m, done: !!data.done };
+    });
   }
 
   function drove() {
@@ -230,7 +287,7 @@ export default function Home() {
 
   return <View style={styles.screen}>
     <WebView ref={web} source={{ html: mapHtml }} style={styles.map} originWhitelist={['*']} javaScriptEnabled scrollEnabled={false}
-      onMessage={(event: WebViewMessageEvent) => { if (!event.nativeEvent.data.includes('ready')) return; setMapReady(true); if (plan) send(plan); }} />
+      onMessage={onMapMessage} />
     <Reanimated.View style={[styles.locate, locateStyle]}>
       <Pressable accessibilityRole="button" accessibilityLabel="Locate me" onPress={() => { void Haptics.selectionAsync(); send({ type: 'locate' }); }}>
         <Glass style={styles.locateGlass}>
@@ -241,15 +298,7 @@ export default function Home() {
     <BottomSheet ref={sheet} index={0} snapPoints={snapPoints} animatedPosition={sheetPosition} enableDynamicSizing={false} enablePanDownToClose={false}
       backgroundComponent={SheetBackground} handleIndicatorStyle={styles.grabber} keyboardBehavior="extend" style={styles.sheetShadow}>
       <BottomSheetScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBar + 24 }]} keyboardShouldPersistTaps="handled">
-        {playing && plan?.drive && !active ? <View style={styles.driving}>
-          <View style={{ flex: 1 }}>
-            <Mono style={{ color: theme.accent }}>On the scenic route · +{plan.extraMinutes} MIN</Mono>
-            <Text style={styles.drivingName} numberOfLines={1}>{plan.drive.name}</Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="I drove it" onPress={drove} style={({ pressed }) => [styles.smallButton, pressed && { opacity: 0.85 }]}>
-            <Text style={styles.smallButtonText}>I drove it</Text>
-          </Pressable>
-        </View> : <>
+        {<>
           <View style={styles.fields}>
             <View style={{ flex: 1 }}>
               {fieldRow('from', 'From', fromLabel, 'My Location')}
@@ -288,25 +337,22 @@ export default function Home() {
         {busy && <View style={styles.loading}><ActivityIndicator color={theme.accent} /><Mono>Finding the scenic way</Mono></View>}
         {!busy && !active && plan && <>
           <View style={styles.divider} />
-          <View style={styles.compare}>
-            <View style={styles.compareCol}>
-              <Mono>Fastest</Mono>
-              <Text style={[styles.score, { color: theme.muted }]}>{plan.fastScore}</Text>
-              <Text style={[styles.compareTime, { color: theme.muted }]}>{duration(plan.fastMinutes)}</Text>
-              <Text style={styles.caption}>the route Google Maps gives you</Text>
-            </View>
-            {plan.drive ? <>
-              <View style={styles.vs}><Mono style={{ color: theme.accent }}>+{plan.extraMinutes} MIN</Mono></View>
-              <View style={[styles.compareCol, { alignItems: 'flex-end' }]}>
-                <Mono style={{ color: theme.accent }}>Scenic</Mono>
-                <Text style={[styles.score, { color: theme.accent }]}>{plan.scenicScore}</Text>
-                <Text style={styles.compareTime}>{duration(plan.vibeMinutes ?? 0)}</Text>
-                <Text style={styles.caption}>scenic score</Text>
-              </View>
-            </> : <View style={[styles.compareCol, { alignItems: 'flex-end', justifyContent: 'center' }]}>
-              <Text style={styles.noDetour}>No scenic detour on this trip yet</Text>
-            </View>}
+          <View style={styles.routeRow}>
+            <View style={[styles.routeSwatch, { backgroundColor: '#8E8E93' }]} />
+            <Text style={[styles.routeName, { color: theme.muted }]}>Google Maps</Text>
+            <Text style={[styles.routeTime, { color: theme.muted }]}>{duration(plan.fastMinutes)}</Text>
           </View>
+          {plan.drive ? <View style={styles.routeRow}>
+            <View style={[styles.routeSwatch, { backgroundColor: theme.accent }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.routeName, { color: theme.accent }]}>Scenic Route</Text>
+              <Mono style={{ fontSize: 10, marginTop: 2 }}>Scenic score {plan.scenicScore}</Mono>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.routeTime}>{duration(plan.vibeMinutes ?? 0)}</Text>
+              <Mono style={{ color: theme.accent, fontSize: 11, marginTop: 2 }}>+{plan.extraMinutes} min</Mono>
+            </View>
+          </View> : <Text style={styles.noDetour}>No scenic detour on this trip yet</Text>}
           {plan.drive && <>
             <Text style={styles.drive}>{plan.drive.name}</Text>
             {!!plan.goldenHour && <Pressable accessibilityRole="button" accessibilityLabel="Leave at golden hour" onPress={() => { void Haptics.selectionAsync(); setGoldenStart((g) => !g); }}>
@@ -320,7 +366,7 @@ export default function Home() {
             <View style={[styles.divider, { marginTop: 24 }]} />
             <Text style={styles.sectionTitle}>Drive timeline</Text>
             <Mono style={{ marginBottom: 10 }}>Leave {clock(depart)} · arrive {clock(depart + (plan.vibeMinutes ?? 0) * 60_000)} · Sunset {clock(plan.sunsetAt ?? 0)}</Mono>
-            {timeline.map((t, i) => <TimelineRow key={`${t.moment.label}${i}`} {...t} last={i === timeline.length - 1}
+            {timeline.map((t, i) => <TimelineRow key={`${t.moment.label}${i}`} {...t} photo={photoFor(t.moment.label)} last={i === timeline.length - 1}
               onPress={() => { void Haptics.selectionAsync(); sheet.current?.snapToIndex(0); send({ type: 'fly', index: i }); }} />)}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Scenic score <Text style={styles.totalValue}>{plan.scenicScore}</Text></Text>
@@ -348,6 +394,60 @@ export default function Home() {
         </View>}
       </BottomSheetScrollView>
     </BottomSheet>
+    {nav && plan?.drive && (() => {
+      const meters = plan.meters ?? 0;
+      const traveled = nav.p * meters;
+      const next = plan.steps.find((st) => st.along > traveled);
+      const moment = nav.m >= 0 ? timeline[nav.m] : undefined;
+      const warm = !!moment?.tag;
+      const minutesLeft = Math.max(0, Math.round((1 - nav.p) * (plan.vibeMinutes ?? 0)));
+      return <>
+        <View style={[styles.navTop, { top: insets.top + 8 }]} pointerEvents="box-none">
+          <Glass style={styles.banner}>
+            <View style={styles.bannerInk} />
+            <SymbolView name={turnIcon(next) as SFSymbol} size={40} tintColor={theme.white} fallback={<Ionicons name="arrow-up" size={40} color={theme.white} />} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerDistance}>{next ? miles(next.along - traveled) : miles((1 - nav.p) * meters)}</Text>
+              <Text style={styles.bannerStreet} numberOfLines={1}>{turnText(next)}</Text>
+            </View>
+          </Glass>
+          {moment && !nav.done && <Reanimated.View key={moment.moment.label} entering={FadeInDown.springify().damping(16)} exiting={FadeOutUp.duration(200)}
+            style={[styles.momentCard, warm && styles.momentWarm]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={[styles.momentIcon, { backgroundColor: kindColor[moment.moment.kind] ?? theme.ink }]}>
+                <SymbolView name={(kindIcon[moment.moment.kind] ?? 'star') as SFSymbol} size={16} tintColor={theme.white} fallback={<Ionicons name="star" size={14} color={theme.white} />} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.momentTitle} numberOfLines={1}>{moment.moment.label}</Text>
+                <Text style={styles.momentNote} numberOfLines={2}>{moment.moment.note}</Text>
+              </View>
+              {moment.tag && <View style={[styles.tlChip, { backgroundColor: moment.tag === 'golden' ? '#f2c14e' : theme.accent }]}><Text style={styles.tlChipText}>{moment.tag === 'golden' ? 'GOLDEN HOUR' : 'SUNSET'}</Text></View>}
+            </View>
+            <Polaroid photo={photoFor(moment.moment.label)} label={moment.moment.label} width={190} />
+          </Reanimated.View>}
+        </View>
+        {!nav.done && <Glass style={[styles.navBottom, { bottom: tabBar + 8 }]}>
+          <View style={styles.navStat}><Text style={styles.navValue}>{clock(nav.startedAt + (plan.vibeMinutes ?? 0) * 60_000)}</Text><Mono style={{ fontSize: 9 }}>arrival</Mono></View>
+          <View style={styles.navStat}><Text style={styles.navValue}>{minutesLeft}</Text><Mono style={{ fontSize: 9 }}>min</Mono></View>
+          <View style={styles.navStat}><Text style={styles.navValue}>{((1 - nav.p) * meters / 1609.34).toFixed(1)}</Text><Mono style={{ fontSize: 9 }}>mi</Mono></View>
+          <Pressable accessibilityRole="button" accessibilityLabel="End route" onPress={endRoute} style={styles.endButton}><Text style={styles.endText}>End</Text></Pressable>
+        </Glass>}
+        {nav.done && <View style={styles.arrival}>
+          <Reanimated.View entering={FadeInDown.springify().damping(14)} style={styles.arrivalCard}>
+            <Mono style={{ color: theme.accent }}>{plan.drive.name}</Mono>
+            <Text style={styles.arrivalTitle}>You took the scenic route</Text>
+            <Text style={styles.blurb}>+{plan.extraMinutes} min on purpose · scenic score {plan.scenicScore}</Text>
+            {pass && <View style={[styles.passClip, { marginTop: 16 }]}><DrivePass {...pass} width={260} mini /></View>}
+            <Pressable accessibilityRole="button" accessibilityLabel="I drove it" onPress={() => { setNav(null); setPlaying(false); drove(); }} style={({ pressed }) => [styles.button, { alignSelf: 'stretch' }, pressed && { opacity: 0.85 }]}>
+              <Text style={styles.buttonText}>I drove it</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={() => { setNav(null); setPlaying(false); router.push({ pathname: '/pass', params: { driveId: plan.drive!._id } }); }} style={{ marginTop: 14 }}>
+              <Text style={[styles.chipText, { color: theme.accent }]}>Share the pass</Text>
+            </Pressable>
+          </Reanimated.View>
+        </View>}
+      </>;
+    })()}
   </View>;
 }
 
@@ -414,5 +514,30 @@ const styles = StyleSheet.create({
   tlChipText: { fontFamily: fonts.monoMedium, fontSize: 10, color: theme.white, letterSpacing: 0.8 },
   photo: { width: '100%', height: 190, borderRadius: 16, marginTop: 12 },
   passClip: { borderRadius: 20, overflow: 'hidden', alignSelf: 'center' },
+  polaroid: { backgroundColor: theme.white, padding: 8, paddingBottom: 0, transform: [{ rotate: '-2deg' }], shadowColor: theme.ink, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  polaroidLabel: { height: 28, lineHeight: 28, fontFamily: 'InstrumentSerif_400Regular_Italic', fontSize: 15, color: theme.ink, paddingHorizontal: 2 },
+  credit: { fontSize: 9, color: theme.faint, marginTop: 6 },
+  navTop: { position: 'absolute', left: 12, right: 12 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 24, overflow: 'hidden' },
+  bannerInk: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(20,17,15,0.82)' },
+  bannerDistance: { fontSize: 32, fontWeight: '700', color: theme.white },
+  bannerStreet: { fontSize: 20, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  momentCard: { marginTop: 10, padding: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.94)', shadowColor: theme.ink, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
+  momentWarm: { backgroundColor: '#fff3d6', borderWidth: 1, borderColor: '#f2c14e' },
+  momentIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  momentTitle: { fontSize: 17, fontWeight: '600', color: theme.ink },
+  momentNote: { fontSize: 14, color: theme.muted, marginTop: 2 },
+  navBottom: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.85)' },
+  navStat: { flex: 1, alignItems: 'center' },
+  navValue: { fontSize: 22, fontWeight: '700', color: theme.ink },
+  endButton: { height: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#e5483a', justifyContent: 'center' },
+  endText: { color: theme.white, fontSize: 17, fontWeight: '700' },
+  arrival: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(20,17,15,0.35)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  arrivalCard: { alignSelf: 'stretch', alignItems: 'center', padding: 22, borderRadius: 28, backgroundColor: theme.paper },
+  arrivalTitle: { fontFamily: fonts.serif, fontSize: 32, color: theme.ink, textAlign: 'center', marginTop: 6 },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(20,17,15,0.1)' },
+  routeSwatch: { width: 6, height: 32, borderRadius: 3 },
+  routeName: { flex: 1, fontSize: 17, fontWeight: '600' },
+  routeTime: { fontSize: 20, fontWeight: '700', color: theme.ink },
   error: { fontSize: 14, color: theme.accent, marginTop: 10 },
 });

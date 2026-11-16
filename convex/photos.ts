@@ -38,7 +38,7 @@ export const byLabels = query({
   args: { labels: v.array(v.string()) },
   handler: async (ctx, { labels }) => {
     const found = await Promise.all(labels.map((label) => ctx.db.query("momentPhotos").withIndex("by_label", (q) => q.eq("label", label)).first()));
-    return found.filter((p) => p !== null && p.url !== null);
+    return found.filter((p): p is NonNullable<typeof p> => p !== null && p.url !== null);
   },
 });
 
