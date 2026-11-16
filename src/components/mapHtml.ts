@@ -265,7 +265,7 @@ function preload(d){
   }
   (d.moments||[]).forEach(function(m){cams.push({center:[m[1],m[0]],zoom:14.5,pitch:60,bearing:0})});
   cams.push(cams[0]);
-  var i=0;var next=function(){if(i>=cams.length){post({type:'preloaded'});return}map.jumpTo(cams[i++]);sync();Promise.all([idleOf(map),idleOf(lines)]).then(next)};
+  var i=0;window.__preStop=false;var next=function(){if(window.__preStop)return;if(i>=cams.length){post({type:'preloaded'});return}map.jumpTo(cams[i++]);sync();Promise.all([idleOf(map),idleOf(lines)]).then(next)};
   next();
 }
 
@@ -274,6 +274,7 @@ function receive(event){
   if(!data||typeof data!=='object')return;
   if(data.type==='play'){if(ready)play(data.seconds);return}
   if(data.type==='stop'){if(ready)stopPlay();return}
+  if(data.type==='preloadStop'){window.__preStop=true;return}
   if(data.type==='preload'){if(ready)preload(data);else post({type:'preloaded'});return}
   if(data.type==='me'){if(ready)placeMe(data);else pendingMe=data;return}
   if(data.type==='locate'){if(ready)locate();return}

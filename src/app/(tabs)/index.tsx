@@ -293,15 +293,15 @@ export default function Home() {
     let stop = false;
     void (async () => {
       const coverStart = nowMs();
-      const pre = await planRoutes({ origin: { lat: SF.lat, lng: SF.lng }, destination: { lat: SANTA_CRUZ.lat, lng: SANTA_CRUZ.lng } }).catch(() => null);
+      const within = <T,>(p: Promise<T>, ms: number, fallback: T) => Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
+      const pre = await within(planRoutes({ origin: { lat: SF.lat, lng: SF.lng }, destination: { lat: SANTA_CRUZ.lat, lng: SANTA_CRUZ.lng } }).catch(() => null), 8000, null);
       if (stop) return;
       if (pre) {
-        const photos = await Promise.all(pre.moments.map((m) => momentPhoto({ label: m.label, lat: m.lat, lng: m.lng, wiki: m.wiki }).catch(() => null)));
-        await Promise.all(photos.map((p) => (p?.url ? Image.prefetch(p.url).catch(() => false) : false)));
+        void Promise.all(pre.moments.map((m) => momentPhoto({ label: m.label, lat: m.lat, lng: m.lng, wiki: m.wiki }).then((p) => (p?.url ? Image.prefetch(p.url) : false)).catch(() => null)));
         await new Promise<void>((resolve) => {
           preloaded.current = resolve;
           send({ type: 'preload', vibe: pre.vibe ?? pre.fast, fast: pre.fast, moments: pre.moments.map((m) => [m.lat, m.lng]), start: [SF.lat, SF.lng] });
-          setTimeout(resolve, 90_000);
+          setTimeout(() => { send({ type: 'preloadStop' }); resolve(); }, 6000);
         });
       }
       await wait(Math.max(0, 2500 - (nowMs() - coverStart)));
