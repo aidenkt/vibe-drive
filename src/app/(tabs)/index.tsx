@@ -108,6 +108,31 @@ function TimelineRow({ moment, eta, tag, last, onPress, photo }: { moment: Momen
   </Pressable>;
 }
 
+const CAPTION = 'TAKE THE LONG WAY';
+function DemoCover() {
+  const [icon] = useState(() => new Animated.Value(0));
+  const [title] = useState(() => new Animated.Value(0));
+  const [line] = useState(() => new Animated.Value(0));
+  const [typed, setTyped] = useState(0);
+  useEffect(() => {
+    Animated.spring(icon, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 120 }).start();
+    Animated.timing(title, { toValue: 1, duration: 500, delay: 500, useNativeDriver: true }).start();
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      Animated.timing(line, { toValue: 1, duration: 900, useNativeDriver: false }).start(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft));
+      timer = setInterval(() => setTyped((n) => { if (n >= CAPTION.length) { clearInterval(timer); return n; } return n + 1; }), 900 / CAPTION.length);
+    }, 1100);
+    return () => { clearTimeout(start); clearInterval(timer); };
+  }, [icon, title, line]);
+  return <>
+    <Animated.Image source={require('../../../assets/brand/icon-1024.png')}
+      style={{ width: 120, height: 120, borderRadius: 27, opacity: icon, transform: [{ scale: icon.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }] }} />
+    <Animated.Text style={[styles.coverTitle, { opacity: title, transform: [{ translateY: title.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>Scenic Route</Animated.Text>
+    <Animated.View style={[styles.coverLine, { width: line.interpolate({ inputRange: [0, 1], outputRange: [0, 220] }) }]} />
+    <Text style={styles.coverCaption}>{CAPTION.slice(0, typed)}</Text>
+  </>;
+}
+
 export default function Home() {
   const insets = useSafeAreaInsets();
   const web = useRef<WebViewHandle>(null);
@@ -259,6 +284,7 @@ export default function Home() {
     if (!demo || !mapReady) return;
     let stop = false;
     void (async () => {
+      const coverStart = nowMs();
       const pre = await planRoutes({ origin: { lat: SF.lat, lng: SF.lng }, destination: { lat: SANTA_CRUZ.lat, lng: SANTA_CRUZ.lng } }).catch(() => null);
       if (stop) return;
       if (pre) {
@@ -270,6 +296,7 @@ export default function Home() {
           setTimeout(resolve, 90_000);
         });
       }
+      await wait(Math.max(0, 2500 - (nowMs() - coverStart)));
       if (stop) return;
       await new Promise<void>((resolve) => Animated.timing(cover, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => resolve()));
       setCovered(false);
@@ -536,9 +563,7 @@ export default function Home() {
       </>;
     })()}
     {covered && <Animated.View style={[styles.cover, { opacity: cover }]}>
-      <Image source={require('../../../assets/brand/icon-1024.png')} style={{ width: 96, height: 96, borderRadius: 22 }} />
-      <Text style={styles.coverText}>Loading the coast…</Text>
-      <ActivityIndicator color={theme.accent} style={{ marginTop: 16 }} />
+      <DemoCover />
     </Animated.View>}
   </View>;
 }
@@ -635,7 +660,9 @@ const styles = StyleSheet.create({
   suggestionPhoto: { width: 240, height: 140, backgroundColor: '#eee' },
   suggestionName: { fontFamily: 'InstrumentSerif_400Regular_Italic', fontSize: 22, color: theme.ink, marginTop: 8 },
   kindDot: { width: 8, height: 8, borderRadius: 4 },
-  cover: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
-  coverText: { fontFamily: fonts.serif, fontSize: 28, color: theme.ink, marginTop: 20 },
+  cover: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#14110F', alignItems: 'center', justifyContent: 'center' },
+  coverTitle: { fontFamily: fonts.serif, fontSize: 44, color: '#F2EADB', marginTop: 22 },
+  coverLine: { height: 1.5, backgroundColor: '#FF5A1F', marginTop: 10 },
+  coverCaption: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 3, color: 'rgba(242,234,219,0.6)', marginTop: 12, height: 16 },
   error: { fontSize: 14, color: theme.accent, marginTop: 10 },
 });
