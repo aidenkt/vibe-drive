@@ -12,6 +12,8 @@ export default defineSchema({
     waypoints: v.array(point),
     color: v.string(),
     upvotes: v.number(),
+    vibes: v.optional(v.array(v.object({ label: v.string(), points: v.number(), icon: v.string() }))),
+    elevationSpan: v.optional(v.number()),
   }).index("by_upvotes", ["upvotes"]).index("by_name", ["name"]),
   driven: defineTable({
     driveId: v.id("drives"),
@@ -25,5 +27,6 @@ export default defineSchema({
     extraMinutes: v.number(),
     miles: v.number(),
     goldenHourAt: v.string(),
+    vibeScore: v.optional(v.number()),
   }).index("by_driveId", ["driveId"]),
 });
