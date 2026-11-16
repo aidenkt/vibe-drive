@@ -140,7 +140,9 @@ function placeCar(p,heading){
 }
 function placeMe(d){
   if(d.lat==null||d.lng==null||!isFinite(d.lat)||!isFinite(d.lng))return;
+  var prev=me?me.getLngLat():null;
   if(!me){me=carMarker(true);me.setLngLat([+d.lng,+d.lat]).addTo(lines||map)}
+  if(!prev||dist([prev.lat,prev.lng],[+d.lat,+d.lng])>20000)map.jumpTo({center:[+d.lng,+d.lat],zoom:12.5});
   me.setLngLat([+d.lng,+d.lat]);if(d.heading!=null&&isFinite(d.heading))me._heading=+d.heading;variant(me,me._heading);
 }
 function locate(){
