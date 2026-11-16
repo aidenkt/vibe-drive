@@ -32,19 +32,51 @@
     "source": "https://commons.wikimedia.org/wiki/File:The_King_Gillette_Ranch_driveway.jpg"
   },
   {
-    "drive": "San Diego Harbor Drive at night",
+    "drive": "San Diego Harbor Nights",
     "file": "harbor-drive-night.jpg",
-    "title": "San Diego night skyline and Coronado Bridge from Harbor Island Park",
-    "author": "Eric",
-    "license": "CC BY-SA 4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:San_Diego_Night_Skyline.jpg"
+    "title": "San Diego Reflecting Pond.jpg",
+    "author": "Rufustelestrat",
+    "license": "CC BY 2.5",
+    "source": "https://commons.wikimedia.org/wiki/File:San_Diego_Reflecting_Pond.jpg"
   },
   {
-    "drive": "Topanga Canyon Road down to PCH",
+    "drive": "Topanga Canyon to the Pacific",
     "file": "topanga-canyon.jpg",
-    "title": "Topanga Canyon",
-    "author": "Jordan Clark Haggard (Jordanamnebrink)",
+    "title": "Pacific Coast Highway.jpg",
+    "author": "Lars0001",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Pacific_Coast_Highway.jpg"
+  },
+  {
+    "drive": "Marin Headlands via Conzelman Road",
+    "file": "marin-headlands.jpg",
+    "title": "Golden Gate Bridge and San Francisco skyline from Hawk Hill at Blue Hour dllu (cropped).jpg",
+    "author": "King of Hearts",
     "license": "CC BY-SA 4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Topanga_Canyon_Los_Angeles.jpg"
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Gate_Bridge_and_San_Francisco_skyline_from_Hawk_Hill_at_Blue_Hour_dllu_(cropped).jpg"
+  },
+  {
+    "drive": "Presidio to Baker Beach",
+    "file": "baker-beach.jpg",
+    "title": "Golden Gate Bridge, North view.jpg",
+    "author": "Radomianin",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Gate_Bridge,_North_view.jpg"
+  },
+  {
+    "drive": "Highway 1 to Stinson Beach",
+    "file": "stinson-beach.jpg",
+    "title": "Stinson Beach, CA - panoramio (2).jpg",
+    "author": "MARELBU",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Stinson_Beach,_CA_-_panoramio_(2).jpg"
+  },
+  {
+    "drive": "Embarcadero and the Bay Lights",
+    "file": "bay-bridge-lights.jpg",
+    "title": "San Francisco Bay Bridge Western Span at night.jpg",
+    "author": "Dllu",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:San_Francisco_Bay_Bridge_Western_Span_at_night.jpg"
   }
 ]
