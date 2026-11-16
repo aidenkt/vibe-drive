@@ -1,5 +1,5 @@
 import { ComponentType, Ref, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { FunctionReturnType } from 'convex/server';
@@ -142,6 +142,9 @@ export default function Home() {
   const fromLabel = from === 'me' ? (me ? 'My Location' : 'San Francisco') : from.label;
   const pass = plan?.drive && passes?.find((p) => p.drive._id === plan.drive!._id);
 
+  const suggestions = (passes ?? []).filter(({ drive }) => drive.waypoints.length > 1)
+    .map((p) => ({ ...p, km: Math.hypot(p.drive.waypoints[0].lat - origin.lat, (p.drive.waypoints[0].lng - origin.lng) * Math.cos(origin.lat * Math.PI / 180)) }))
+    .sort((a, b) => a.km - b.km).slice(0, 6);
   const send = (value: unknown) => web.current?.postMessage(JSON.stringify(value));
   const depart = goldenStart && plan?.leaveAt ? plan.leaveAt : plannedAt;
   const timeline = (plan?.moments ?? []).map((moment) => {
@@ -388,6 +391,23 @@ export default function Home() {
             </Pressable>
           </>}
         </>}
+        {!active && !busy && !!suggestions.length && <View style={{ marginTop: 16 }}>
+          <Mono style={{ marginBottom: 10 }}>Suggestions</Mono>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={272} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingRight: 18, paddingBottom: 14 }}>
+            {suggestions.map(({ drive, split }) => <Pressable key={drive._id} accessibilityRole="button" accessibilityLabel={drive.name}
+              onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); const end = drive.waypoints[drive.waypoints.length - 1]; const place = { lat: end.lat, lng: end.lng, label: drive.name }; setTo(place); route(origin, place); }}
+              style={({ pressed }) => [styles.suggestion, pressed && { transform: [{ scale: 0.98 }] }]}>
+              <Image source={drivePhoto(drive)} style={styles.suggestionPhoto} resizeMode="cover" />
+              <Text numberOfLines={1} style={styles.suggestionName}>{drive.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <Mono style={{ fontSize: 10 }}>{'extraMinutes' in split ? `+${split.extraMinutes} min · ${split.miles} mi` : drive.region}</Mono>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {[...new Set((drive.moments ?? []).map((m) => m.kind))].slice(0, 4).map((kind) => <View key={kind} style={[styles.kindDot, { backgroundColor: kindColor[kind] ?? theme.ink }]} />)}
+                </View>
+              </View>
+            </Pressable>)}
+          </ScrollView>
+        </View>}
         {!busy && !active && !plan && <View style={{ marginTop: 18 }}>
           <Text style={styles.drive}>Take the long way.</Text>
           <Text style={styles.blurb}>Pick a destination and compare the fastest route with one worth driving.</Text>
@@ -524,20 +544,3 @@ const styles = StyleSheet.create({
   bannerStreet: { fontSize: 20, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   momentCard: { marginTop: 10, padding: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.94)', shadowColor: theme.ink, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
   momentWarm: { backgroundColor: '#fff3d6', borderWidth: 1, borderColor: '#f2c14e' },
-  momentIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  momentTitle: { fontSize: 17, fontWeight: '600', color: theme.ink },
-  momentNote: { fontSize: 14, color: theme.muted, marginTop: 2 },
-  navBottom: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 24, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.85)' },
-  navStat: { flex: 1, alignItems: 'center' },
-  navValue: { fontSize: 22, fontWeight: '700', color: theme.ink },
-  endButton: { height: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#e5483a', justifyContent: 'center' },
-  endText: { color: theme.white, fontSize: 17, fontWeight: '700' },
-  arrival: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(20,17,15,0.35)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  arrivalCard: { alignSelf: 'stretch', alignItems: 'center', padding: 22, borderRadius: 28, backgroundColor: theme.paper },
-  arrivalTitle: { fontFamily: fonts.serif, fontSize: 32, color: theme.ink, textAlign: 'center', marginTop: 6 },
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(20,17,15,0.1)' },
-  routeSwatch: { width: 6, height: 32, borderRadius: 3 },
-  routeName: { flex: 1, fontSize: 17, fontWeight: '600' },
-  routeTime: { fontSize: 20, fontWeight: '700', color: theme.ink },
-  error: { fontSize: 14, color: theme.accent, marginTop: 10 },
-});
