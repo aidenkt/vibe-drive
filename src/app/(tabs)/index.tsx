@@ -33,6 +33,10 @@ type WebViewHandle = { postMessage: (message: string) => void };
 const WebView = RNWebView as unknown as ComponentType<WebViewProps & { ref?: Ref<WebViewHandle> }>;
 type Plan = FunctionReturnType<typeof api.routes.planRoutes>;
 type Item = Plan['scenicItems'][number];
+type Moment = Plan['moments'][number];
+const kindColor: Record<string, string> = { water: '#4fb3d9', bridge: '#ff5a1f', landmark: '#14110F', viewpoint: '#c58b3a', forest: '#3f7d4e', curves: '#8E8E93', beach: '#e9c46a', city: '#6f6a64' };
+const clock = (ms: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms)).replace(/\s?[AP]M$/, '');
+const momentTag = (eta: number, sunset: number): 'golden' | 'sunset' | null => eta >= sunset - 60 * 60_000 && eta < sunset - 10 * 60_000 ? 'golden' : eta >= sunset - 10 * 60_000 && eta <= sunset + 15 * 60_000 ? 'sunset' : null;
 type PhotonFeature = { geometry: { coordinates: [number, number] }; properties: Record<string, string | undefined> };
 
 function SheetBackground({ style }: BottomSheetBackgroundProps) {
@@ -48,6 +52,25 @@ function ItemRow({ item, index, muted }: { item: Item; index: number; muted?: bo
     <Text style={[styles.itemLabel, dim && { color: theme.faint }]}>{item.label}</Text>
     <Text style={[styles.itemPoints, dim && { color: theme.faint }]}>{item.points > 0 ? `+${item.points}` : item.points < 0 ? `−${-item.points}` : '0'}</Text>
   </Animated.View>;
+}
+
+function TimelineRow({ moment, eta, tag, last, onPress }: { moment: Moment; eta: number; tag: 'golden' | 'sunset' | null; last: boolean; onPress: () => void }) {
+  const color = kindColor[moment.kind] ?? theme.ink;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${moment.label} at ${clock(eta)}`} onPress={onPress} style={({ pressed }) => [styles.tlRow, pressed && { opacity: 0.6 }]}>
+    <Text style={styles.tlTime}>{clock(eta)}</Text>
+    <View style={styles.tlRail}>
+      <View style={[styles.tlLine, last && { bottom: '50%' }]} />
+      <View style={[styles.tlDot, { backgroundColor: color }]} />
+    </View>
+    <View style={styles.tlBody}>
+      <Text style={styles.tlLabel}>{moment.label}</Text>
+      <Text style={styles.tlNote}>{moment.note}</Text>
+      <View style={styles.tlTags}>
+        <Text style={[styles.tlKind, { color }]}>+{moment.points} {moment.kind}</Text>
+        {tag && <View style={[styles.tlChip, { backgroundColor: tag === 'golden' ? '#f2c14e' : theme.accent }]}><Text style={styles.tlChipText}>{tag === 'golden' ? 'GOLDEN HOUR' : 'SUNSET'}</Text></View>}
+      </View>
+    </View>
+  </Pressable>;
 }
 
 export default function Home() {
@@ -72,6 +95,8 @@ export default function Home() {
   const [searching, setSearching] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [plannedAt, setPlannedAt] = useState(0);
+  const [goldenStart, setGoldenStart] = useState(false);
   const sheetPosition = useSharedValue(0);
   const locateStyle = useAnimatedStyle(() => ({ top: sheetPosition.value - 60 }));
   const tabBar = insets.bottom + 84;
@@ -81,6 +106,18 @@ export default function Home() {
   const pass = plan?.drive && passes?.find((p) => p.drive._id === plan.drive!._id);
 
   const send = (value: unknown) => web.current?.postMessage(JSON.stringify(value));
+  const depart = goldenStart && plan?.leaveAt ? plan.leaveAt : plannedAt;
+  const timeline = (plan?.moments ?? []).map((moment) => {
+    const eta = depart + moment.offsetMinutes * 60_000;
+    return { moment, eta, tag: momentTag(eta, moment.sunsetAt) };
+  });
+  const timelineKey = JSON.stringify(timeline.map((t) => [t.moment.lat, t.moment.lng, t.tag]));
+  useEffect(() => {
+    if (!mapReady) return;
+    const moments = JSON.parse(timelineKey) as [number, number, string | null][];
+    web.current?.postMessage(JSON.stringify({ type: 'moments', moments: moments.map(([lat, lng, tag], i) => ({ lat, lng, tag, kind: plan?.moments[i]?.kind, color: kindColor[plan?.moments[i]?.kind ?? ''] ?? '#14110F' })) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, timelineKey]);
 
   useEffect(() => {
     let position: Location.LocationSubscription | undefined;
@@ -139,7 +176,7 @@ export default function Home() {
     planRoutes({ origin: { lat: a.lat, lng: a.lng }, destination: { lat: b.lat, lng: b.lng } })
       .then((result) => {
         if (run !== planRun.current) return;
-        setPlan(result); send(result);
+        setPlan(result); setPlannedAt(Date.now()); setGoldenStart(false); send(result);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       })
       .catch(() => { if (run === planRun.current) setError('Couldn’t plan that route. Try another place.'); })
@@ -272,16 +309,23 @@ export default function Home() {
           </View>
           {plan.drive && <>
             <Text style={styles.drive}>{plan.drive.name}</Text>
-            {!!plan.goldenHour && <Mono style={styles.golden}>{plan.goldenHour}</Mono>}
+            {!!plan.goldenHour && <Pressable accessibilityRole="button" accessibilityLabel="Leave at golden hour" onPress={() => { void Haptics.selectionAsync(); setGoldenStart((g) => !g); }}>
+              <Mono style={[styles.golden, goldenStart && { color: '#b8860b' }]}>{goldenStart ? '✓ ' : ''}{plan.goldenHour}</Mono>
+            </Pressable>}
             {plan.estimated && <Mono style={{ fontSize: 9, marginTop: 6 }}>Estimated · road data offline</Mono>}
             <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Replay the scenic route' : 'Take the scenic route'} onPress={takeRoute}
               style={({ pressed }) => [styles.button, pressed && { opacity: 0.85 }]}>
               <Text style={styles.buttonText}>{playing ? 'Replay the scenic route' : 'Take the scenic route'}</Text>
             </Pressable>
             <View style={[styles.divider, { marginTop: 24 }]} />
-            <Text style={styles.sectionTitle}>What’s good about this route</Text>
-            {plan.scenicItems.map((item, i) => <ItemRow key={item.label} item={item} index={i} />)}
-            <View style={styles.totalRow}><Text style={styles.totalLabel}>Scenic score</Text><Text style={styles.totalValue}>{plan.scenicScore}</Text></View>
+            <Text style={styles.sectionTitle}>Drive timeline</Text>
+            <Mono style={{ marginBottom: 10 }}>Leave {clock(depart)} · arrive {clock(depart + (plan.vibeMinutes ?? 0) * 60_000)} · Sunset {clock(plan.sunsetAt ?? 0)}</Mono>
+            {timeline.map((t, i) => <TimelineRow key={`${t.moment.label}${i}`} {...t} last={i === timeline.length - 1}
+              onPress={() => { void Haptics.selectionAsync(); sheet.current?.snapToIndex(0); send({ type: 'fly', index: i }); }} />)}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Scenic score <Text style={styles.totalValue}>{plan.scenicScore}</Text></Text>
+              <Text style={[styles.totalLabel, { color: theme.faint }]}>Fastest <Text style={[styles.totalValue, { color: theme.faint }]}>{plan.fastScore}</Text></Text>
+            </View>
           </>}
           <Text style={[styles.sectionTitle, { color: theme.faint, fontSize: 15, marginTop: 22 }]}>The fast way</Text>
           {plan.fastItems.map((item, i) => <ItemRow key={item.label} item={item} index={i} muted />)}
@@ -356,6 +400,18 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12 },
   totalLabel: { fontSize: 15, fontWeight: '600', color: theme.ink },
   totalValue: { fontFamily: fonts.monoMedium, fontSize: 20, color: theme.accent },
+  tlRow: { flexDirection: 'row', minHeight: 64 },
+  tlTime: { width: 44, fontFamily: fonts.monoMedium, fontSize: 13, color: theme.ink, paddingTop: 2 },
+  tlRail: { width: 22, alignItems: 'center' },
+  tlLine: { position: 'absolute', top: 0, bottom: 0, width: 1.5, backgroundColor: 'rgba(20,17,15,0.15)' },
+  tlDot: { width: 12, height: 12, borderRadius: 6, marginTop: 4, borderWidth: 2, borderColor: theme.white },
+  tlBody: { flex: 1, paddingLeft: 8, paddingBottom: 16 },
+  tlLabel: { fontSize: 16, fontWeight: '600', color: theme.ink },
+  tlNote: { fontSize: 14, color: theme.muted, marginTop: 2 },
+  tlTags: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  tlKind: { fontFamily: fonts.monoMedium, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  tlChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tlChipText: { fontFamily: fonts.monoMedium, fontSize: 10, color: theme.white, letterSpacing: 0.8 },
   photo: { width: '100%', height: 190, borderRadius: 16, marginTop: 12 },
   passClip: { borderRadius: 20, overflow: 'hidden', alignSelf: 'center' },
   error: { fontSize: 14, color: theme.accent, marginTop: 10 },

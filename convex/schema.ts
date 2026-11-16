@@ -14,6 +14,7 @@ export default defineSchema({
     upvotes: v.number(),
     vibes: v.optional(v.array(v.object({ label: v.string(), points: v.number(), icon: v.string() }))),
     elevationSpan: v.optional(v.number()),
+    moments: v.optional(v.array(v.object({ label: v.string(), kind: v.string(), lat: v.number(), lng: v.number(), note: v.string() }))),
   }).index("by_upvotes", ["upvotes"]).index("by_name", ["name"]),
   driven: defineTable({
     driveId: v.id("drives"),

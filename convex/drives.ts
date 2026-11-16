@@ -120,6 +120,82 @@ const catalog = [
   },
 ];
 
+
+type MomentKind = "water" | "bridge" | "landmark" | "viewpoint" | "forest" | "curves" | "beach" | "city";
+type Moment = { label: string; kind: MomentKind; lat: number; lng: number; note: string };
+const m = (label: string, kind: MomentKind, lat: number, lng: number, note: string): Moment => ({ label, kind, lat, lng, note });
+export const momentsByDrive: Record<string, Moment[]> = {
+  "Torrey Pines to Del Mar": [
+    m("Torrey Pines Reserve", "forest", 32.9233, -117.2531, "The rarest pine in the US, right above the road"),
+    m("Sandstone bluffs", "viewpoint", 32.9300, -117.2590, "Cliffs drop straight into the surf"),
+    m("Torrey Pines State Beach", "beach", 32.9330, -117.2600, "Pull into the beach lot"),
+    m("Peñasquitos Lagoon", "water", 32.9370, -117.2580, "Lagoon on the right, ocean on the left"),
+    m("Del Mar", "city", 32.9595, -117.2653, "Roll into Del Mar village"),
+  ],
+  "Dana Point to Crystal Cove": [
+    m("Dana Point Harbor", "water", 33.4600, -117.6980, "Boats tucked under the headland"),
+    m("PCH above the Pacific", "water", 33.5000, -117.7420, "Ocean right beside the road"),
+    m("Laguna Main Beach", "beach", 33.5427, -117.7854, "Boardwalk and volleyball nets"),
+    m("Heisler Park", "viewpoint", 33.5440, -117.7900, "Clifftop gardens over the coves"),
+    m("Crystal Cove", "beach", 33.5750, -117.8400, "Open coastline, no buildings"),
+  ],
+  "Cuyamaca to Julian": [
+    m("Cuyamaca Rancho forest", "forest", 32.8600, -116.5900, "Oaks and pines close in"),
+    m("Stonewall Peak", "viewpoint", 32.9600, -116.5800, "Granite peak above the meadow"),
+    m("Lake Cuyamaca", "water", 32.9850, -116.5780, "Mountain lake beside the road"),
+    m("SR-79 bends", "curves", 33.0200, -116.5850, "Mountain curves heading north"),
+    m("Julian", "city", 33.0787, -116.6019, "Apple pie on Main Street"),
+  ],
+  "Rancho Santa Fe Backroads": [
+    m("Eucalyptus tunnel", "forest", 33.0100, -117.2150, "Tall eucalyptus over the road"),
+    m("Rancho Santa Fe village", "city", 33.0205, -117.2030, "Tiny village in the groves"),
+    m("Del Dios Highway", "curves", 33.0450, -117.1700, "Winding through ranch country"),
+    m("Lake Hodges", "water", 33.0600, -117.1300, "Lake opens up below the road"),
+  ],
+  "San Diego Harbor Nights": [
+    m("Coronado Bridge", "bridge", 32.6890, -117.1500, "The bridge arcs overhead"),
+    m("Seaport Village", "water", 32.7090, -117.1710, "Skyline on the water"),
+    m("USS Midway", "landmark", 32.7137, -117.1751, "Aircraft carrier on the waterfront"),
+    m("Harbor Island", "viewpoint", 32.7250, -117.1900, "Downtown lights across the bay"),
+  ],
+  "Topanga Canyon to the Pacific": [
+    m("Topanga village", "city", 34.0930, -118.6020, "Canyon village with the old shops"),
+    m("Canyon switchbacks", "curves", 34.0700, -118.5880, "Rock walls on both sides"),
+    m("Drop onto PCH", "water", 34.0390, -118.5810, "The canyon opens onto the Pacific"),
+    m("Big Rock", "viewpoint", 34.0350, -118.6150, "Coast all the way to Point Dume"),
+    m("Las Flores Beach", "beach", 34.0365, -118.6340, "Ends on Malibu sand"),
+  ],
+  "Marin Headlands via Conzelman Road": [
+    m("Golden Gate Bridge", "bridge", 37.8199, -122.4783, "Cross the Golden Gate"),
+    m("Battery Spencer", "viewpoint", 37.8297, -122.4831, "The bridge with the whole city behind it"),
+    m("Hawk Hill", "viewpoint", 37.8256, -122.4993, "Highest point on Conzelman"),
+    m("Conzelman cliff road", "curves", 37.8270, -122.5100, "One-way road on the cliff edge"),
+    m("Rodeo Beach", "beach", 37.8320, -122.5390, "Ends at Rodeo Beach"),
+  ],
+  "Presidio to Baker Beach": [
+    m("Palace of Fine Arts", "landmark", 37.8029, -122.4484, "Rotunda over the lagoon"),
+    m("Golden Gate in the fog", "bridge", 37.8040, -122.4700, "Bridge popping out of the fog"),
+    m("Presidio cypress", "forest", 37.7960, -122.4800, "Cypress forest on both sides"),
+    m("Baker Beach", "beach", 37.7936, -122.4836, "Sand right under the bridge"),
+    m("Legion of Honor", "landmark", 37.7845, -122.5008, "Columns above Lands End"),
+    m("Lands End", "viewpoint", 37.7785, -122.5136, "Cliffs at the edge of the city"),
+  ],
+  "Highway 1 to Stinson Beach": [
+    m("Golden Gate Bridge", "bridge", 37.8199, -122.4783, "Cross the Golden Gate"),
+    m("Muir Beach Overlook", "viewpoint", 37.8620, -122.5850, "Pull off: the whole coast"),
+    m("Highway 1 switchbacks", "curves", 37.8800, -122.6100, "Cliffside curves above the ocean"),
+    m("Ocean the whole way", "water", 37.8900, -122.6300, "Pacific below the guardrail"),
+    m("Stinson Beach", "beach", 37.9005, -122.6440, "Ends on the sand"),
+  ],
+  "Embarcadero and the Bay Lights": [
+    m("Fisherman's Wharf", "landmark", 37.8080, -122.4177, "Start at the Wharf"),
+    m("Waterfront piers", "water", 37.8060, -122.4030, "The bay the whole way"),
+    m("Ferry Building", "landmark", 37.7955, -122.3937, "Clock tower on the water"),
+    m("Bay Bridge lights", "bridge", 37.7890, -122.3880, "25,000 LEDs overhead"),
+    m("Oracle Park", "city", 37.7786, -122.3893, "Ends at the ballpark"),
+  ],
+};
+
 export const seed = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -127,10 +203,10 @@ export const seed = internalMutation({
     for (const drive of catalog) {
       const existing = await ctx.db.query("drives").withIndex("by_name", (q) => q.eq("name", drive.name)).unique();
       if (!existing) {
-        await ctx.db.insert("drives", { ...drive, upvotes: 0 });
+        await ctx.db.insert("drives", { ...drive, upvotes: 0, moments: momentsByDrive[drive.name] });
         inserted++;
       } else {
-        await ctx.db.patch("drives", existing._id, { vibes: drive.vibes, elevationSpan: drive.elevationSpan });
+        await ctx.db.patch("drives", existing._id, { vibes: drive.vibes, elevationSpan: drive.elevationSpan, moments: momentsByDrive[drive.name] });
       }
     }
     return { inserted };

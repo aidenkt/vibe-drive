@@ -56,6 +56,9 @@ async function route(points: Point[]): Promise<Route> {
   }
 }
 
+const kindPoints: Record<string, number> = { bridge: 3, viewpoint: 3, water: 2, beach: 2, curves: 2, forest: 2, landmark: 1, city: 1 };
+type TimedMoment = { label: string; kind: string; lat: number; lng: number; note: string; points: number; offsetMinutes: number; sunsetAt: number };
+
 type Item = { label: string; points: number; icon: string; muted?: boolean };
 
 function heading(a: Coordinate, b: Coordinate) {
@@ -84,6 +87,7 @@ export const planRoutes = action({
     fast: Coordinate[]; fastMinutes: number; fastItems: Item[]; fastScore: number; estimated: boolean;
     vibe: Coordinate[] | null; vibeMinutes: number | null; extraMinutes: number | null; drive: Doc<"drives"> | null;
     goldenHour: string | null; goldenHourAt: string | null; miles: number | null; scenicItems: Item[]; scenicScore: number | null;
+    moments: TimedMoment[]; leaveAt: number | null; sunsetAt: number | null;
   }> => {
     for (const p of [origin, destination]) {
       if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180) {
@@ -116,7 +120,7 @@ export const planRoutes = action({
       rush ? { label: "Rush-hour traffic", points: -1, icon: "car.2" } : { label: "Light traffic right now", points: 0, icon: "car.2" },
     ];
     const fastScore = fastItems.reduce((t, i) => t + i.points, 0);
-    const none = { vibe: null, vibeMinutes: null, extraMinutes: null, drive: null, goldenHour: null, goldenHourAt: null, miles: null, scenicItems: [], scenicScore: null };
+    const none = { vibe: null, vibeMinutes: null, extraMinutes: null, drive: null, goldenHour: null, goldenHourAt: null, miles: null, scenicItems: [], scenicScore: null, moments: [], leaveAt: null, sunsetAt: null };
     if (!best || !vibe) return { fast: fast.coordinates, fastMinutes, fastItems, fastScore, estimated: fast.estimated, ...none };
     const vibeMinutes = Math.round(vibe.minutes);
     const extraMinutes = Math.max(0, vibeMinutes - fastMinutes);
@@ -141,6 +145,23 @@ export const planRoutes = action({
     const scenicScore = scenicItems.reduce((t, i) => t + i.points, 0);
     const miles = Math.round(vibe.legKm.slice(1, -1).reduce((total, km) => total + km, 0) * 0.621371 * 10) / 10;
     const goldenHourAt = laTime(new Date(sunset.getTime() - 40 * 60_000)).replace(/\s?([AP])M$/, "$1");
+    const cumulative = [0];
+    for (let i = 1; i < vibe.coordinates.length; i++) {
+      const [a, b] = [vibe.coordinates[i - 1], vibe.coordinates[i]];
+      cumulative.push(cumulative[i - 1] + distance({ lat: a[0], lng: a[1] }, { lat: b[0], lng: b[1] }));
+    }
+    const total = cumulative[cumulative.length - 1] || 1;
+    const sunsetDay = new Date(`${part("year")}-${part("month")}-${part("day")}T20:00:00Z`);
+    const moments: TimedMoment[] = (drive.moments ?? []).map((moment) => {
+      let nearest = 0;
+      let nearestKm = Infinity;
+      vibe.coordinates.forEach(([lat, lng], i) => {
+        const km = distance(moment, { lat, lng });
+        if (km < nearestKm) { nearestKm = km; nearest = i; }
+      });
+      return { ...moment, points: kindPoints[moment.kind] ?? 1, offsetMinutes: cumulative[nearest] / total * vibe.minutes,
+        sunsetAt: (getTimes(sunsetDay, moment.lat, moment.lng).sunset ?? sunset).getTime() };
+    }).sort((a, b) => a.offsetMinutes - b.offsetMinutes);
     await ctx.runMutation(internal.drives.saveSplit, {
       driveId: drive._id, fast: simplify(fast.coordinates, 60), vibe: simplify(vibe.coordinates, 60), extraMinutes, miles, goldenHourAt, vibeScore: scenicScore,
     });
@@ -148,6 +169,7 @@ export const planRoutes = action({
       fast: fast.coordinates, fastMinutes, fastItems, fastScore, estimated: fast.estimated || vibe.estimated,
       vibe: vibe.coordinates, vibeMinutes, extraMinutes, drive, miles, goldenHourAt, scenicItems, scenicScore,
       goldenHour: `Leave at ${leave} to hit ${drive.name} at golden hour`,
+      moments, leaveAt: departure.getTime(), sunsetAt: sunset.getTime(),
     };
   },
 });

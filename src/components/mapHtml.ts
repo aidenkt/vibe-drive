@@ -14,6 +14,9 @@ export const mapHtml = `<!DOCTYPE html>
 .vcar .ring{position:absolute;left:-16px;top:-1px;width:80px;height:80px;border-radius:50%;border:2px solid rgba(255,90,31,.55);background:rgba(255,90,31,.10);animation:vring 2.2s ease-out infinite}
 @keyframes vbob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
 @keyframes vring{0%{transform:scale(.35,.2);opacity:.9}100%{transform:scale(1,.55);opacity:0}}
+.mom{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.mom.pulse{animation:mpulse .9s ease-out 3}
+@keyframes mpulse{0%{box-shadow:0 0 0 0 rgba(255,90,31,.8)}100%{box-shadow:0 0 0 16px rgba(255,90,31,0)}}
 .pin{width:14px;height:14px;border-radius:50%;background:#F2EADB;border:3px solid #14110F}
 </style></head><body>
 <div id="map"></div><div id="lines"></div><div class="attrib">OpenFreeMap &copy; OpenMapTiles &copy; OpenStreetMap</div>
@@ -51,7 +54,7 @@ function sprite(h){
   return s+'</svg>';
 }
 var CARS=[0,1,2,3,4,5,6,7].map(function(k){return sprite(k*45)});
-var map=null,lines=null,loaded=0,ready=false,pending=null,fast=[],vibe=[],pins=[],car=null,me=null,drawAnim=null,playback=null,pendingMe=null;
+var map=null,lines=null,loaded=0,ready=false,pending=null,fast=[],vibe=[],pins=[],car=null,me=null,drawAnim=null,playback=null,pendingMe=null,moms=[],momEls=[],pendingMoments=null;
 
 function post(o){try{if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(o))}catch(e){}}
 
@@ -102,10 +105,12 @@ function addRouteLayers(){
   lines.addLayer({id:'fast-casing',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':8}});
   lines.addLayer({id:'fast-line',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#8E8E93','line-opacity':0.9,'line-width':5}});
   lines.addLayer({id:'vibe-line',type:'line',source:'vibe',layout:{'line-join':'round','line-cap':'round'},paint:{'line-width':6,'line-gradient':gradient(1)}});
+  lines.addSource('hl',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  lines.addLayer({id:'hl-line',type:'line',source:'hl',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':['get','c'],'line-width':6}});
 }
 function sync(){if(!lines||!map)return;lines.jumpTo({center:map.getCenter(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch(),padding:map.getPadding()})}
 function flattenSkirts(){if(lines&&lines.terrain)lines.terrain.getMeshFrameDelta=function(){return 0}}
-function onLoaded(){flattenSkirts();loaded++;if(loaded<2)return;try{addRouteLayers()}catch(e){}sync();ready=true;post({type:'ready'});if(pendingMe){placeMe(pendingMe);pendingMe=null}if(pending){var d=pending;pending=null;draw(d)}}
+function onLoaded(){flattenSkirts();loaded++;if(loaded<2)return;try{addRouteLayers()}catch(e){}sync();ready=true;post({type:'ready'});if(pendingMe){placeMe(pendingMe);pendingMe=null}if(pending){var d=pending;pending=null;draw(d)}if(pendingMoments){var pm=pendingMoments;pendingMoments=null;setMoments(pm)}}
 
 function create(style,overlay){
   try{
@@ -213,12 +218,39 @@ function play(){
   },1250);
 }
 
+function around(mo){
+  if(vibe.length<2)return [];
+  var n=0,best=Infinity;for(var i=0;i<vibe.length;i++){var d=dist(vibe[i],[mo.lat,mo.lng]);if(d<best){best=d;n=i}}
+  var a=n,b=n,da=0,db=0;
+  while(a>0&&da<900){da+=dist(vibe[a-1],vibe[a]);a--}
+  while(b<vibe.length-1&&db<900){db+=dist(vibe[b],vibe[b+1]);b++}
+  return vibe.slice(a,b+1);
+}
+function setMoments(list){
+  momEls.forEach(function(m){m.remove()});momEls=[];moms=Array.isArray(list)?list:[];
+  var feats=[];
+  moms.forEach(function(mo){
+    var el=document.createElement('div');el.className='mom';el.style.background=mo.color;
+    momEls.push(new maplibregl.Marker({element:el,opacityWhenCovered:'1'}).setLngLat([mo.lng,mo.lat]).addTo(lines||map));
+    var c=mo.tag==='golden'?'#f2c14e':mo.kind==='water'?'#8fd8f2':null;if(!c)return;
+    var seg=around(mo);if(seg.length>1)feats.push({type:'Feature',properties:{c:c},geometry:{type:'LineString',coordinates:seg.map(function(p){return [p[1],p[0]]})}});
+  });
+  if(lines&&lines.getSource('hl'))lines.getSource('hl').setData({type:'FeatureCollection',features:feats});
+}
+function fly(i){
+  var mo=moms[i];if(!mo||!map)return;playback=null;
+  map.flyTo({center:[mo.lng,mo.lat],zoom:14.5,pitch:60,bearing:map.getBearing(),duration:1400,padding:{top:0,bottom:220,left:0,right:0}});
+  var el=momEls[i]&&momEls[i].getElement();if(el){el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse')}
+}
+
 function receive(event){
   var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}
   if(!data||typeof data!=='object')return;
   if(data.type==='play'){if(ready)play();return}
   if(data.type==='me'){if(ready)placeMe(data);else pendingMe=data;return}
   if(data.type==='locate'){if(ready)locate();return}
+  if(data.type==='moments'){if(ready)setMoments(data.moments);else pendingMoments=data.moments;return}
+  if(data.type==='fly'){if(ready)fly(data.index);return}
   if(!Array.isArray(data.fast)&&!Array.isArray(data.vibe))return;
   if(!ready){pending=data;return}
   draw(data);
