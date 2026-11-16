@@ -99,8 +99,9 @@ function reveal(t){if(lines&&lines.getLayer('vibe-line'))lines.setPaintProperty(
 function addRouteLayers(){
   lines.addSource('fast',{type:'geojson',data:emptyLine()});
   lines.addSource('vibe',{type:'geojson',data:emptyLine(),lineMetrics:true});
-  lines.addLayer({id:'fast-line',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#2a2a2a','line-opacity':0.6,'line-width':2,'line-dasharray':[2,2]}});
-  lines.addLayer({id:'vibe-line',type:'line',source:'vibe',layout:{'line-join':'round','line-cap':'round'},paint:{'line-width':4,'line-gradient':gradient(1)}});
+  lines.addLayer({id:'fast-casing',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':8}});
+  lines.addLayer({id:'fast-line',type:'line',source:'fast',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#8E8E93','line-opacity':0.9,'line-width':5}});
+  lines.addLayer({id:'vibe-line',type:'line',source:'vibe',layout:{'line-join':'round','line-cap':'round'},paint:{'line-width':6,'line-gradient':gradient(1)}});
 }
 function sync(){if(!lines||!map)return;lines.jumpTo({center:map.getCenter(),zoom:map.getZoom(),bearing:map.getBearing(),pitch:map.getPitch(),padding:map.getPadding()})}
 function flattenSkirts(){if(lines&&lines.terrain)lines.terrain.getMeshFrameDelta=function(){return 0}}
