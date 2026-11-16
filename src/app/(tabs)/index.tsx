@@ -114,6 +114,10 @@ export default function Home() {
   const sheet = useRef<BottomSheet>(null);
   const demo = useLocalSearchParams<{ demo?: string }>().demo === '1';
   const scroller = useRef<{ scrollTo: (o: { y: number; animated?: boolean }) => void } | null>(null);
+  const preloaded = useRef<(() => void) | null>(null);
+  const momentPhoto = useAction(api.photos.momentPhoto);
+  const [cover] = useState(() => new Animated.Value(demo ? 1 : 0));
+  const [covered, setCovered] = useState(demo);
   const live = useRef<{ plan: Plan | null; nav: { done: boolean } | null; handle: string | null }>({ plan: null, nav: null, handle: null });
   const planRun = useRef(0);
   const planRoutes = useAction(api.routes.planRoutes);
@@ -255,11 +259,26 @@ export default function Home() {
     if (!demo || !mapReady) return;
     let stop = false;
     void (async () => {
+      const pre = await planRoutes({ origin: { lat: SF.lat, lng: SF.lng }, destination: { lat: SANTA_CRUZ.lat, lng: SANTA_CRUZ.lng } }).catch(() => null);
+      if (stop) return;
+      if (pre) {
+        const photos = await Promise.all(pre.moments.map((m) => momentPhoto({ label: m.label, lat: m.lat, lng: m.lng, wiki: m.wiki }).catch(() => null)));
+        await Promise.all(photos.map((p) => (p?.url ? Image.prefetch(p.url).catch(() => false) : false)));
+        await new Promise<void>((resolve) => {
+          preloaded.current = resolve;
+          send({ type: 'preload', vibe: pre.vibe ?? pre.fast, fast: pre.fast, moments: pre.moments.map((m) => [m.lat, m.lng]), start: [SF.lat, SF.lng] });
+          setTimeout(resolve, 90_000);
+        });
+      }
+      if (stop) return;
+      await new Promise<void>((resolve) => Animated.timing(cover, { toValue: 0, duration: 600, useNativeDriver: true }).start(() => resolve()));
+      setCovered(false);
       await wait(2000); if (stop) return;
       setActive('to'); setText(''); sheet.current?.snapToIndex(2);
       for (const letter of 'Santa Cruz') { await wait(140); setText((t) => t + letter); }
       await wait(1600); if (stop) return;
-      setActive(null); setText(''); setResults([]); setTo(SANTA_CRUZ); route(SF, SANTA_CRUZ);
+      setActive(null); setText(''); setResults([]); setTo(SANTA_CRUZ);
+      if (pre) { setPlan(pre); setPlannedAt(nowMs()); send(pre); void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } else route(SF, SANTA_CRUZ);
       for (let i = 0; i < 60 && !live.current.plan; i++) await wait(250);
       sheet.current?.snapToIndex(1);
       await wait(3500); if (stop) return;
@@ -306,6 +325,7 @@ export default function Home() {
     let data: { type?: string; p?: number; m?: number; done?: boolean };
     try { data = JSON.parse(event.nativeEvent.data); } catch { return; }
     if (data.type === 'ready') { setMapReady(true); if (plan) send(plan); return; }
+    if (data.type === 'preloaded') { preloaded.current?.(); preloaded.current = null; return; }
     if (data.type !== 'nav') return;
     setNav((prev) => {
       if (!prev) return prev;
@@ -515,6 +535,11 @@ export default function Home() {
         </View>}
       </>;
     })()}
+    {covered && <Animated.View style={[styles.cover, { opacity: cover }]}>
+      <Image source={require('../../../assets/brand/icon-1024.png')} style={{ width: 96, height: 96, borderRadius: 22 }} />
+      <Text style={styles.coverText}>Loading the coast…</Text>
+      <ActivityIndicator color={theme.accent} style={{ marginTop: 16 }} />
+    </Animated.View>}
   </View>;
 }
 
@@ -610,5 +635,7 @@ const styles = StyleSheet.create({
   suggestionPhoto: { width: 240, height: 140, backgroundColor: '#eee' },
   suggestionName: { fontFamily: 'InstrumentSerif_400Regular_Italic', fontSize: 22, color: theme.ink, marginTop: 8 },
   kindDot: { width: 8, height: 8, borderRadius: 4 },
+  cover: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.paper, alignItems: 'center', justifyContent: 'center' },
+  coverText: { fontFamily: fonts.serif, fontSize: 28, color: theme.ink, marginTop: 20 },
   error: { fontSize: 14, color: theme.accent, marginTop: 10 },
 });

@@ -252,11 +252,29 @@ function fly(i){
   var el=momEls[i]&&momEls[i].getElement();if(el){el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse')}
 }
 
+function idleOf(m){return new Promise(function(r){if(!m){r();return}var done=false;var f=function(){if(!done){done=true;r()}};m.once('idle',f);setTimeout(f,4000);m.triggerRepaint()})}
+function preload(d){
+  var route=valid(d.vibe||[]),cams=[],start=d.start;
+  cams.push({center:[start[1],start[0]],zoom:12.5,pitch:60,bearing:0});
+  if(route.length){
+    var b=new maplibregl.LngLatBounds();route.concat(valid(d.fast||[])).forEach(function(p){b.extend([p[1],p[0]])});
+    var c=map.cameraForBounds(b,{padding:{top:80,bottom:520,left:40,right:40},maxZoom:14});if(c)cams.push({center:c.center,zoom:c.zoom,pitch:55,bearing:-20});
+    var cum=[0];for(var i=1;i<route.length;i++)cum.push(cum[i-1]+dist(route[i-1],route[i]));
+    var total=cum[cum.length-1],zoom=Math.max(13,Math.min(16,15.6-Math.log(Math.max(1,total/20000))/Math.LN2*0.6)),q={cum:cum,seg:1},q2={cum:cum,seg:1};
+    for(var k=0;k<12;k++){var dd=total*k/11,pos=at(q,dd),ah=at(q2,Math.min(total,dd+400));cams.push({center:[pos[1],pos[0]],zoom:zoom,pitch:65,bearing:dist(pos,ah)>1?bearing(pos,ah):0})}
+  }
+  (d.moments||[]).forEach(function(m){cams.push({center:[m[1],m[0]],zoom:14.5,pitch:60,bearing:0})});
+  cams.push(cams[0]);
+  var i=0;var next=function(){if(i>=cams.length){post({type:'preloaded'});return}map.jumpTo(cams[i++]);sync();Promise.all([idleOf(map),idleOf(lines)]).then(next)};
+  next();
+}
+
 function receive(event){
   var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}
   if(!data||typeof data!=='object')return;
   if(data.type==='play'){if(ready)play(data.seconds);return}
   if(data.type==='stop'){if(ready)stopPlay();return}
+  if(data.type==='preload'){if(ready)preload(data);else post({type:'preloaded'});return}
   if(data.type==='me'){if(ready)placeMe(data);else pendingMe=data;return}
   if(data.type==='locate'){if(ready)locate();return}
   if(data.type==='moments'){if(ready)setMoments(data.moments);else pendingMoments=data.moments;return}
