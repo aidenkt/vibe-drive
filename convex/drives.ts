@@ -93,6 +93,30 @@ const catalog = [
     bestTime: "sunset" as const, color: "#E48D9D",
     waypoints: [{ lat: 34.1033, lng: -118.5984 }, { lat: 34.0895, lng: -118.6043 }, { lat: 34.0654, lng: -118.5861 }, { lat: 34.0395, lng: -118.5784 }, { lat: 34.0325, lng: -118.5994 }, { lat: 34.0362, lng: -118.6339 }],
   },
+  {
+    name: "Marin Headlands via Conzelman Road", region: "San Francisco",
+    blurb: "The whole city framed by the bridge, from the edge of a cliff.",
+    bestTime: "sunset" as const, color: "#E07A5F",
+    waypoints: [{ lat: 37.8078, lng: -122.4752 }, { lat: 37.8324, lng: -122.4807 }, { lat: 37.8297, lng: -122.4831 }, { lat: 37.8256, lng: -122.4993 }, { lat: 37.8320, lng: -122.5390 }],
+  },
+  {
+    name: "Presidio to Baker Beach", region: "San Francisco",
+    blurb: "Cypress, fog and the bridge popping in and out of it.",
+    bestTime: "any" as const, color: "#8FA98A",
+    waypoints: [{ lat: 37.8039, lng: -122.4646 }, { lat: 37.8001, lng: -122.4770 }, { lat: 37.7936, lng: -122.4836 }, { lat: 37.7845, lng: -122.5008 }, { lat: 37.7785, lng: -122.5136 }],
+  },
+  {
+    name: "Highway 1 to Stinson Beach", region: "San Francisco",
+    blurb: "Forty switchbacks of cliffside Highway 1, then sand.",
+    bestTime: "any" as const, color: "#D9A15B",
+    waypoints: [{ lat: 37.8780, lng: -122.5150 }, { lat: 37.8620, lng: -122.5850 }, { lat: 37.8605, lng: -122.5760 }, { lat: 37.9005, lng: -122.6440 }],
+  },
+  {
+    name: "Embarcadero and the Bay Lights", region: "San Francisco",
+    blurb: "The Bay Bridge lights doing their thing over the water.",
+    bestTime: "night" as const, color: "#8E8BD6",
+    waypoints: [{ lat: 37.8080, lng: -122.4177 }, { lat: 37.8087, lng: -122.4098 }, { lat: 37.7955, lng: -122.3937 }, { lat: 37.7890, lng: -122.3880 }, { lat: 37.7786, lng: -122.3893 }],
+  },
 ];
 
 export const seed = internalMutation({

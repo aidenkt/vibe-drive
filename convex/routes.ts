@@ -78,9 +78,10 @@ export const planRoutes = action({
       }
     }
     const drives: Doc<"drives">[] = await ctx.runQuery(api.drives.listDrives, {});
-    const candidates = drives.filter((drive) => drive.waypoints.length > 0 && distance(drive.waypoints[0], origin) > 8);
+    const candidates = drives.filter((drive) => drive.waypoints.length > 0 && distance(drive.waypoints[0], origin) > 5);
     if (!candidates.length) throw new Error("No scenic drives available. Seed the drive catalog first.");
-    const drive = drives.find((d) => d._id === driveId) ?? candidates.reduce((best, candidate) =>
+    const endingNearby = candidates.find((d) => distance(d.waypoints[d.waypoints.length - 1], destination) < 3);
+    const drive = drives.find((d) => d._id === driveId) ?? endingNearby ?? candidates.reduce((best, candidate) =>
       segmentDistance(candidate.waypoints[0], origin, destination) < segmentDistance(best.waypoints[0], origin, destination) ? candidate : best);
     const [fast, vibe] = await Promise.all([
       route([origin, destination]),
