@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, Image, Pressable, ScrollView, StyleSheet, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { FunctionReturnType } from 'convex/server';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -137,12 +137,20 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const web = useRef<WebViewHandle>(null);
   const sheet = useRef<BottomSheet>(null);
-  const demo = useLocalSearchParams<{ demo?: string }>().demo === '1';
+  const paramDemo = useLocalSearchParams<{ demo?: string }>().demo === '1';
+  const [demoOn, setDemoOn] = useState(paramDemo);
+  const demo = demoOn;
+  const navigation = useNavigation();
+  const taps = useRef<number[]>([]);
+  const startDemo = useRef<() => void>(() => {});
   const scroller = useRef<{ scrollTo: (o: { y: number; animated?: boolean }) => void } | null>(null);
   const preloaded = useRef<(() => void) | null>(null);
   const momentPhoto = useAction(api.photos.momentPhoto);
-  const [cover] = useState(() => new Animated.Value(demo ? 1 : 0));
-  const [covered, setCovered] = useState(demo);
+  const [cover] = useState(() => new Animated.Value(paramDemo ? 1 : 0));
+  const [covered, setCovered] = useState(paramDemo);
+  startDemo.current = () => { if (demoOn) return; cover.setValue(1); setCovered(true); setDemoOn(true); };
+  const tripleTap = () => { const now = Date.now(); taps.current = [...taps.current.filter((t) => now - t < 900), now]; if (taps.current.length >= 3) { taps.current = []; startDemo.current(); } };
+  useEffect(() => navigation.addListener('tabPress' as never, () => tripleTap()), [navigation]);
   const live = useRef<{ plan: Plan | null; nav: { done: boolean } | null; handle: string | null }>({ plan: null, nav: null, handle: null });
   const planRun = useRef(0);
   const planRoutes = useAction(api.routes.planRoutes);
@@ -351,6 +359,7 @@ export default function Home() {
   function onMapMessage(event: WebViewMessageEvent) {
     let data: { type?: string; p?: number; m?: number; done?: boolean };
     try { data = JSON.parse(event.nativeEvent.data); } catch { return; }
+    if (data.type === 'tripletap') { startDemo.current(); return; }
     if (data.type === 'ready') { setMapReady(true); if (plan) send(plan); return; }
     if (data.type === 'preloaded') { preloaded.current?.(); preloaded.current = null; return; }
     if (data.type !== 'nav') return;

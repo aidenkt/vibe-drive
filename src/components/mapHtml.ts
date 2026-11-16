@@ -283,7 +283,7 @@ function receive(event){
   if(!ready){pending=data;return}
   draw(data);
 }
-window.addEventListener('message',receive);document.addEventListener('message',receive);
+(function(){var t=[];var sx=0,sy=0;document.addEventListener('touchstart',function(e){if(e.touches.length!==1)return;sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});document.addEventListener('touchend',function(e){var c=e.changedTouches[0];if(!c||Math.abs(c.clientX-sx)>12||Math.abs(c.clientY-sy)>12)return;var n=Date.now();t=t.filter(function(x){return n-x<800});t.push(n);if(t.length>=3){t=[];post({type:'tripletap'})}},{passive:true})})();window.addEventListener('message',receive);document.addEventListener('message',receive);
 
 var gl=null;try{var c=document.createElement('canvas');gl=c.getContext('webgl2')||c.getContext('webgl')}catch(e){}
 if(!window.maplibregl||!gl){post({type:'ready'});return}
