@@ -1,6 +1,14 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, Text, TextProps, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+
+const liquidGlass = isLiquidGlassAvailable();
+
+export function Glass({ style, children }: { style?: StyleProp<ViewStyle>; children?: ReactNode }) {
+  if (liquidGlass) return <GlassView glassEffectStyle="regular" style={style}>{children}</GlassView>;
+  return <BlurView tint="light" intensity={60} style={[{ overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.55)' }, style]}>{children}</BlurView>;
+}
 
 export const theme = {
   ink: '#14110F',

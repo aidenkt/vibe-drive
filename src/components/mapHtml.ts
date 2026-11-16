@@ -107,7 +107,7 @@ function placeCar(p,heading){
 function fit(){
   var all=fast.concat(vibe);if(!all.length)return;
   var b=new maplibregl.LngLatBounds();all.forEach(function(p){b.extend([p[1],p[0]])});
-  try{map.fitBounds(b,{padding:{top:170,bottom:380,left:40,right:40},pitch:55,bearing:-20,maxZoom:14,duration:1200})}catch(e){map.fitBounds(b,{padding:40})}
+  try{map.fitBounds(b,{padding:{top:90,bottom:470,left:40,right:40},pitch:55,bearing:-20,maxZoom:14,duration:1200})}catch(e){map.fitBounds(b,{padding:40})}
 }
 
 function rad(d){return d*Math.PI/180}
