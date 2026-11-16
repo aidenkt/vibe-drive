@@ -1,0 +1,50 @@
+[
+  {
+    "drive": "PCH: Torrey Pines to Del Mar",
+    "file": "torrey-pines.jpg",
+    "title": "Torrey Pines Cliff",
+    "author": "FishSpeaker",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Torrey_Pines_Cliff_-_panoramio.jpg"
+  },
+  {
+    "drive": "PCH: Dana Point to Laguna Beach to Crystal Cove",
+    "file": "crystal-cove.jpg",
+    "title": "Crystal Cove State Park",
+    "author": "Don Ramey Logan",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Crystal_Cove_State_Park_photo_Don_Ramey_Logan.jpg"
+  },
+  {
+    "drive": "Julian via SR-79 through Cuyamaca",
+    "file": "julian-sr79.jpg",
+    "title": "Stonewall Peak in Cuyamaca Rancho State Park",
+    "author": "Hexatekin",
+    "license": "CC0 1.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Stonewall_Peak_in_Cuyamaca_Rancho_State_Park.jpg"
+  },
+  {
+    "drive": "Rancho Santa Fe backroads",
+    "file": "rancho-santa-fe.jpg",
+    "title": "King Gillette Ranch driveway, lined with eucalyptus trees",
+    "author": "National Park Service",
+    "license": "Public domain (U.S. National Park Service)",
+    "source": "https://commons.wikimedia.org/wiki/File:The_King_Gillette_Ranch_driveway.jpg"
+  },
+  {
+    "drive": "San Diego Harbor Drive at night",
+    "file": "harbor-drive-night.jpg",
+    "title": "San Diego night skyline and Coronado Bridge from Harbor Island Park",
+    "author": "Eric",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:San_Diego_Night_Skyline.jpg"
+  },
+  {
+    "drive": "Topanga Canyon Road down to PCH",
+    "file": "topanga-canyon.jpg",
+    "title": "Topanga Canyon",
+    "author": "Jordan Clark Haggard (Jordanamnebrink)",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Topanga_Canyon_Los_Angeles.jpg"
+  }
+]
