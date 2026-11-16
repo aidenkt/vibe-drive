@@ -122,7 +122,7 @@ export const planRoutes = action({
     for (const option of options.slice(0, 3)) {
       const candidate = await route([origin, ...option.waypoints, destination]);
       const extra = Math.round(candidate.minutes) - fastMinutes;
-      const endsAtDestination = distance(option.waypoints[option.waypoints.length - 1], destination) < 5;
+      const endsAtDestination = distance(option.waypoints[option.waypoints.length - 1], destination) < 15;
       if (driveId || extra <= 45 || extra <= fastMinutes * 0.6 || (endsAtDestination && extra <= Math.max(fastMinutes * 0.8, 75))) { best = option; vibe = candidate; break; }
     }
     const fastItems: Item[] = [

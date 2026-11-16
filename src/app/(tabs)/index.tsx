@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, Image, Pressable, ScrollView, StyleSheet, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { FunctionReturnType } from 'convex/server';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -38,6 +38,8 @@ const kindColor: Record<string, string> = { water: '#4fb3d9', bridge: '#ff5a1f',
 const clock = (ms: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ms)).replace(/\s?[AP]M$/, '');
 const momentTag = (eta: number, sunset: number): 'golden' | 'sunset' | null => eta >= sunset - 60 * 60_000 && eta < sunset - 10 * 60_000 ? 'golden' : eta >= sunset - 10 * 60_000 && eta <= sunset + 15 * 60_000 ? 'sunset' : null;
 const nowMs = () => Date.now();
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const SANTA_CRUZ: Place = { label: 'Santa Cruz', detail: 'California', lat: 36.9743626, lng: -122.0294673 };
 type MomentPhoto = { label: string; url: string | null; author: string; license: string };
 type Step = Plan['steps'][number];
 const kindIcon: Record<string, string> = { water: 'water.waves', bridge: 'road.lanes', landmark: 'building.columns', viewpoint: 'binoculars', forest: 'tree', curves: 'road.lanes.curved.right', beach: 'beach.umbrella', city: 'building.2' };
@@ -110,6 +112,9 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const web = useRef<WebViewHandle>(null);
   const sheet = useRef<BottomSheet>(null);
+  const demo = useLocalSearchParams<{ demo?: string }>().demo === '1';
+  const scroller = useRef<{ scrollTo: (o: { y: number; animated?: boolean }) => void } | null>(null);
+  const live = useRef<{ plan: Plan | null; nav: { done: boolean } | null; handle: string | null }>({ plan: null, nav: null, handle: null });
   const planRun = useRef(0);
   const planRoutes = useAction(api.routes.planRoutes);
   const markDriven = useMutation(api.drives.markDriven);
@@ -163,6 +168,7 @@ export default function Home() {
     let position: Location.LocationSubscription | undefined;
     let compass: Location.LocationSubscription | undefined;
     let cancelled = false;
+    if (demo) return;
     void (async () => {
       try {
         const { granted } = await Location.requestForegroundPermissionsAsync();
@@ -176,7 +182,7 @@ export default function Home() {
       } catch {}
     })();
     return () => { cancelled = true; position?.remove(); compass?.remove(); };
-  }, []);
+  }, [demo]);
 
   const carAt = me ?? SF;
   useEffect(() => {
@@ -243,6 +249,47 @@ export default function Home() {
     route(to, origin);
   }
 
+  useEffect(() => { live.current = { plan, nav, handle: handle ?? null }; });
+
+  useEffect(() => {
+    if (!demo || !mapReady) return;
+    let stop = false;
+    void (async () => {
+      await wait(2000); if (stop) return;
+      setActive('to'); setText(''); sheet.current?.snapToIndex(2);
+      for (const letter of 'Santa Cruz') { await wait(140); setText((t) => t + letter); }
+      await wait(1600); if (stop) return;
+      setActive(null); setText(''); setResults([]); setTo(SANTA_CRUZ); route(SF, SANTA_CRUZ);
+      for (let i = 0; i < 60 && !live.current.plan; i++) await wait(250);
+      sheet.current?.snapToIndex(1);
+      await wait(3500); if (stop) return;
+      sheet.current?.snapToIndex(2);
+      await wait(800);
+      for (let y = 0; y <= 1800; y += 150) { scroller.current?.scrollTo({ y, animated: true }); await wait(450); }
+      scroller.current?.scrollTo({ y: 0, animated: true });
+      await wait(600); if (stop) return;
+      setPlaying(true); setNav({ p: 0, m: -1, done: false, startedAt: nowMs() }); send({ type: 'play', seconds: 34 });
+      sheet.current?.close();
+      for (let i = 0; i < 200 && !live.current.nav?.done; i++) await wait(250);
+      await wait(3000); if (stop) return;
+      const current = live.current.plan;
+      setNav(null); setPlaying(false);
+      if (current?.drive && live.current.handle) {
+        await markDriven({ driveId: current.drive._id, handle: live.current.handle }).catch(() => undefined);
+        router.push({ pathname: '/pass', params: { driveId: current.drive._id, stamp: '1' } });
+        await wait(5000);
+        router.back();
+      }
+      await wait(800); if (stop) return;
+      send({ type: 'stop' }); setPlan(null); setTo(null);
+      sheet.current?.snapToIndex(1);
+      await wait(4000); if (stop) return;
+      router.navigate('/drives');
+    })();
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo, mapReady]);
+
   function takeRoute() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPlaying(true); setNav({ p: 0, m: -1, done: false, startedAt: nowMs() }); send({ type: 'play' });
@@ -300,7 +347,7 @@ export default function Home() {
     </Reanimated.View>
     <BottomSheet ref={sheet} index={0} snapPoints={snapPoints} animatedPosition={sheetPosition} enableDynamicSizing={false} enablePanDownToClose={false}
       backgroundComponent={SheetBackground} handleIndicatorStyle={styles.grabber} keyboardBehavior="extend" style={styles.sheetShadow}>
-      <BottomSheetScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBar + 24 }]} keyboardShouldPersistTaps="handled">
+      <BottomSheetScrollView ref={scroller as never} contentContainerStyle={[styles.content, { paddingBottom: tabBar + 24 }]} keyboardShouldPersistTaps="handled">
         {<>
           <View style={styles.fields}>
             <View style={{ flex: 1 }}>

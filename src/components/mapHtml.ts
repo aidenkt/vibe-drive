@@ -190,7 +190,7 @@ function at(p,d){
   return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
 }
 
-function play(){
+function play(seconds){
   if(!map||vibe.length<2)return;
   var cum=[0];for(var i=1;i<vibe.length;i++)cum.push(cum[i-1]+dist(vibe[i-1],vibe[i]));
   var total=cum[cum.length-1];if(!total)return;
@@ -205,7 +205,7 @@ function play(){
   setTimeout(function(){
     if(playback!==token)return;
     var p={cum:cum,seg:1},la={cum:cum,seg:1},cam=startBearing,orbit=0,ease=0,mult=1,d=0,last=performance.now(),lastPost=0;
-    var speed=total/82,look=Math.max(120,Math.min(600,speed*1.5));
+    var speed=total/(seconds||82),look=Math.max(120,Math.min(600,speed*1.5));
     var frame=function(now){
       if(playback!==token)return;
       var dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -255,7 +255,7 @@ function fly(i){
 function receive(event){
   var data;try{data=typeof event.data==='string'?JSON.parse(event.data):event.data}catch(e){return}
   if(!data||typeof data!=='object')return;
-  if(data.type==='play'){if(ready)play();return}
+  if(data.type==='play'){if(ready)play(data.seconds);return}
   if(data.type==='stop'){if(ready)stopPlay();return}
   if(data.type==='me'){if(ready)placeMe(data);else pendingMe=data;return}
   if(data.type==='locate'){if(ready)locate();return}
