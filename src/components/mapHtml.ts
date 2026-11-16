@@ -209,7 +209,7 @@ function play(seconds){
     var frame=function(now){
       if(playback!==token)return;
       var dt=Math.min(0.05,(now-last)/1000);last=now;
-      var active=-1;for(var k=0;k<along.length;k++){var gap=along[k]-d;if(gap<800&&gap>-250){active=k;break}}
+      var active=-1;for(var k=0;k<along.length;k++){var gap=along[k]-d;if(gap<Math.max(800,speed*1.2)&&gap>-Math.max(250,speed*0.6)){active=k;break}}
       mult+=((active>=0?0.5:1)-mult)*0.03;ease+=((active>=0?1:0)-ease)*0.03;
       d=Math.min(total,d+speed*mult*dt);
       var pos=at(p,d),ahead=at(la,Math.min(total,d+look));
