@@ -1,0 +1,82 @@
+[
+  {
+    "drive": "PCH: Torrey Pines to Del Mar",
+    "file": "torrey-pines.jpg",
+    "title": "Torrey Pines Cliff",
+    "author": "FishSpeaker",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Torrey_Pines_Cliff_-_panoramio.jpg"
+  },
+  {
+    "drive": "PCH: Dana Point to Laguna Beach to Crystal Cove",
+    "file": "crystal-cove.jpg",
+    "title": "Crystal Cove State Park",
+    "author": "Don Ramey Logan",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Crystal_Cove_State_Park_photo_Don_Ramey_Logan.jpg"
+  },
+  {
+    "drive": "Julian via SR-79 through Cuyamaca",
+    "file": "julian-sr79.jpg",
+    "title": "Stonewall Peak in Cuyamaca Rancho State Park",
+    "author": "Hexatekin",
+    "license": "CC0 1.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Stonewall_Peak_in_Cuyamaca_Rancho_State_Park.jpg"
+  },
+  {
+    "drive": "Rancho Santa Fe backroads",
+    "file": "rancho-santa-fe.jpg",
+    "title": "King Gillette Ranch driveway, lined with eucalyptus trees",
+    "author": "National Park Service",
+    "license": "Public domain (U.S. National Park Service)",
+    "source": "https://commons.wikimedia.org/wiki/File:The_King_Gillette_Ranch_driveway.jpg"
+  },
+  {
+    "drive": "San Diego Harbor Nights",
+    "file": "harbor-drive-night.jpg",
+    "title": "San Diego Reflecting Pond.jpg",
+    "author": "Rufustelestrat",
+    "license": "CC BY 2.5",
+    "source": "https://commons.wikimedia.org/wiki/File:San_Diego_Reflecting_Pond.jpg"
+  },
+  {
+    "drive": "Topanga Canyon to the Pacific",
+    "file": "topanga-canyon.jpg",
+    "title": "Pacific Coast Highway.jpg",
+    "author": "Lars0001",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Pacific_Coast_Highway.jpg"
+  },
+  {
+    "drive": "Marin Headlands via Conzelman Road",
+    "file": "marin-headlands.jpg",
+    "title": "Golden Gate Bridge and San Francisco skyline from Hawk Hill at Blue Hour dllu (cropped).jpg",
+    "author": "King of Hearts",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Gate_Bridge_and_San_Francisco_skyline_from_Hawk_Hill_at_Blue_Hour_dllu_(cropped).jpg"
+  },
+  {
+    "drive": "Presidio to Baker Beach",
+    "file": "baker-beach.jpg",
+    "title": "Golden Gate Bridge, North view.jpg",
+    "author": "Radomianin",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Gate_Bridge,_North_view.jpg"
+  },
+  {
+    "drive": "Highway 1 to Stinson Beach",
+    "file": "stinson-beach.jpg",
+    "title": "Stinson Beach, CA - panoramio (2).jpg",
+    "author": "MARELBU",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Stinson_Beach,_CA_-_panoramio_(2).jpg"
+  },
+  {
+    "drive": "Embarcadero and the Bay Lights",
+    "file": "bay-bridge-lights.jpg",
+    "title": "San Francisco Bay Bridge Western Span at night.jpg",
+    "author": "Dllu",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:San_Francisco_Bay_Bridge_Western_Span_at_night.jpg"
+  }
+]
