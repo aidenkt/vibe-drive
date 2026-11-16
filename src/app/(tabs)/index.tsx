@@ -24,7 +24,7 @@ const WebView = RNWebView as unknown as ComponentType<WebViewProps & { ref?: Ref
 type Plan = FunctionReturnType<typeof api.routes.planRoutes>;
 
 function SheetBackground({ style }: BottomSheetBackgroundProps) {
-  return <Glass style={[style, styles.sheetBackground]} />;
+  return <Glass style={[style, styles.sheetBackground]}><View style={styles.sheetTint} /></Glass>;
 }
 
 export default function Home() {
@@ -41,7 +41,8 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Destination | null>(null);
   const [playing, setPlaying] = useState(false);
-  const snapPoints = useMemo(() => ['14%', '45%', '92%'], []);
+  const tabBar = insets.bottom + 50;
+  const snapPoints = useMemo(() => [tabBar + 122, '58%', '92%'], [tabBar]);
   const pass = plan && passes?.find((p) => p.drive._id === plan.drive._id);
 
   const send = (value: unknown) => web.current?.postMessage(JSON.stringify(value));
@@ -84,9 +85,9 @@ export default function Home() {
     <WebView ref={web} source={{ html: mapHtml }} style={styles.map} originWhitelist={['*']} javaScriptEnabled scrollEnabled={false}
       onMessage={(event: WebViewMessageEvent) => { if (event.nativeEvent.data.includes('ready') && plan) send(plan); }} />
     <BottomSheet ref={sheet} index={0} snapPoints={snapPoints} enableDynamicSizing={false} enablePanDownToClose={false}
-      bottomInset={insets.bottom + 50} backgroundComponent={SheetBackground} handleIndicatorStyle={styles.grabber}
+      backgroundComponent={SheetBackground} handleIndicatorStyle={styles.grabber}
       keyboardBehavior="extend" style={styles.sheetShadow}>
-      <BottomSheetScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <BottomSheetScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBar + 32 }]} keyboardShouldPersistTaps="handled">
         {playing && plan ? <View style={styles.driving}>
           <View style={{ flex: 1 }}>
             <Mono style={{ color: theme.accent }}>On the vibe route · +{plan.extraMinutes} MIN</Mono>
@@ -159,10 +160,11 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.white },
   map: { flex: 1, backgroundColor: theme.white },
-  sheetBackground: { borderRadius: 28, borderWidth: 0.5, borderColor: theme.hairline },
+  sheetBackground: { borderRadius: 28, borderWidth: 0.5, borderColor: theme.hairline, overflow: 'hidden' },
+  sheetTint: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.72)' },
   sheetShadow: { shadowColor: theme.ink, shadowOpacity: 0.12, shadowRadius: 24, shadowOffset: { width: 0, height: -4 } },
   grabber: { backgroundColor: 'rgba(20,17,15,0.25)', width: 40 },
-  content: { paddingHorizontal: 18, paddingBottom: 48 },
+  content: { paddingHorizontal: 18 },
   search: { flexDirection: 'row', alignItems: 'center', height: 44, paddingHorizontal: 14, gap: 8, borderRadius: 14, backgroundColor: 'rgba(20,17,15,0.06)' },
   input: { flex: 1, height: 44, fontSize: 17, color: theme.ink },
   chips: { flexDirection: 'row', gap: 8, marginTop: 10 },

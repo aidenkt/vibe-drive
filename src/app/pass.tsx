@@ -1,10 +1,11 @@
 import { ComponentRef, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, PixelRatio, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation } from 'convex/react';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { StatusBar } from 'expo-status-bar';
 import { api } from '../../convex/_generated/api';
 import { DrivePass } from '../components/DrivePass';
 import { passColors, passFonts } from '../lib/drives';
@@ -34,14 +35,15 @@ export default function PassScreen() {
   async function share() {
     setBusy(true); setError('');
     try {
-      const uri = await captureRef(passRef, { format: 'png', quality: 1, width: 1080, height: 1920, result: 'tmpfile' });
+      const uri = await captureRef(passRef, { format: 'jpg', quality: 0.92, width: 1080 / PixelRatio.get(), height: 1920 / PixelRatio.get(), result: 'tmpfile' });
       if (!(await Sharing.isAvailableAsync())) throw new Error('Sharing unavailable');
-      await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: 'Share your Drive Pass' });
+      await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', UTI: 'public.jpeg', dialogTitle: 'Share your Drive Pass' });
     } catch { setError('Could not share the pass. Try again.'); }
     finally { setBusy(false); }
   }
 
   return <View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+    <StatusBar style="light" />
     <View style={[styles.bar, { width: passWidth }]}>
       <Text style={styles.label}>DRIVE PASS</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => router.back()} hitSlop={12}><Text style={styles.close}>CLOSE</Text></Pressable>

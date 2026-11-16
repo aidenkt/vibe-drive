@@ -61,7 +61,7 @@ export const DrivePass = forwardRef<ComponentRef<typeof View>, Props>(function D
   const splitHeight = (mini ? 64 : 92) * s;
   const data = [split.miles !== undefined && `${split.miles} MI`, split.extraMinutes !== undefined && `+${split.extraMinutes} MIN`, split.goldenHourAt && `GOLDEN HOUR ${split.goldenHourAt}`].filter(Boolean).join(' · ');
   return <View ref={ref} collapsable={false} style={{ width, height, backgroundColor: passColors.ink, overflow: 'hidden' }}>
-    <View style={{ height: photoHeight }}>
+    <View style={{ height: photoHeight, overflow: 'hidden' }}>
       <Image source={drivePhoto(drive)} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: passColors.paper, opacity: 0.1, mixBlendMode: 'saturation' }]} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: passColors.accent, opacity: 0.09, mixBlendMode: 'soft-light' }]} />
@@ -74,7 +74,7 @@ export const DrivePass = forwardRef<ComponentRef<typeof View>, Props>(function D
         NO. {pad(serial)} / {pad(total)} · {serialCity(drive)}
       </Text>
     </View>
-    <View style={{ height: plateHeight, paddingHorizontal: 24 * s, paddingTop: (mini ? 10 : 18) * s, paddingBottom: (mini ? 16 : 26) * s }}>
+    <View style={{ height: plateHeight, backgroundColor: passColors.ink, paddingHorizontal: 24 * s, paddingTop: (mini ? 10 : 18) * s, paddingBottom: (mini ? 16 : 26) * s }}>
       <RouteSplit fast={split.fast} vibe={split.vibe} extraMinutes={split.extraMinutes} width={width - 48 * s} height={splitHeight} scale={s} />
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.name, { fontSize: (mini ? 30 : 44) * s, lineHeight: (mini ? 32 : 46) * s }]}>{drive.name}</Text>
