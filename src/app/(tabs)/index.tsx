@@ -1,4 +1,4 @@
-import { ComponentType, Ref, useMemo, useRef, useState } from 'react';
+import { ComponentType, Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAction, useMutation } from 'convex/react';
@@ -6,6 +6,9 @@ import { FunctionReturnType } from 'convex/server';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+import { SymbolView } from 'expo-symbols';
+import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import BottomSheet, { BottomSheetBackgroundProps, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { WebView as RNWebView, WebViewMessageEvent, WebViewProps } from 'react-native-webview';
 import { api } from '../../../convex/_generated/api';
@@ -16,8 +19,17 @@ import { drivePhoto } from '../../lib/drives';
 import { useHandle } from '../../lib/handle';
 import { usePasses } from '../../lib/usePasses';
 
-const destinations = { 'Los Angeles': { lat: 34.0522, lng: -118.2437 }, Julian: { lat: 33.0787, lng: -116.6019 } };
-type Destination = keyof typeof destinations;
+type Point = { lat: number; lng: number };
+const origins = {
+  SF: { label: 'From SF', point: { lat: 37.788, lng: -122.4075 }, destinations: { 'Stinson Beach': { lat: 37.9005, lng: -122.644 }, Sausalito: { lat: 37.8591, lng: -122.4853 } } },
+  SD: { label: 'From San Diego', point: { lat: 32.7157, lng: -117.1611 }, destinations: { 'Los Angeles': { lat: 34.0522, lng: -118.2437 }, Julian: { lat: 33.0787, lng: -116.6019 } } },
+} as const satisfies Record<string, { label: string; point: Point; destinations: Record<string, Point> }>;
+type OriginKey = keyof typeof origins;
+const km = (a: Point, b: Point) => {
+  const r = Math.PI / 180;
+  const h = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lng - a.lng) * r / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
 const duration = (minutes: number) => `${Math.floor(minutes / 60)}h ${String(Math.round(minutes) % 60).padStart(2, '0')}m`;
 type WebViewHandle = { postMessage: (message: string) => void };
 const WebView = RNWebView as unknown as ComponentType<WebViewProps & { ref?: Ref<WebViewHandle> }>;
@@ -39,21 +51,53 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Destination | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [originKey, setOriginKey] = useState<OriginKey>('SF');
+  const [me, setMe] = useState<Point | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const sheetPosition = useSharedValue(0);
+  const locateStyle = useAnimatedStyle(() => ({ top: sheetPosition.value - 60 }));
+  const origin = origins[originKey];
+  const nearOrigin = me && km(me, origin.point) < 50 ? me : null;
+  const carAt = nearOrigin ?? origin.point;
   const [playing, setPlaying] = useState(false);
-  const tabBar = insets.bottom + 50;
-  const snapPoints = useMemo(() => [tabBar + 122, '58%', '92%'], [tabBar]);
+  const tabBar = insets.bottom + 84;
+  const snapPoints = useMemo(() => [tabBar + 170, '70%', '92%'], [tabBar]);
   const pass = plan && passes?.find((p) => p.drive._id === plan.drive._id);
 
   const send = (value: unknown) => web.current?.postMessage(JSON.stringify(value));
 
-  async function choose(name: Destination) {
+  useEffect(() => {
+    let position: Location.LocationSubscription | undefined;
+    let compass: Location.LocationSubscription | undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { granted } = await Location.requestForegroundPermissionsAsync();
+        if (!granted || cancelled) return;
+        position = await Location.watchPositionAsync({ accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
+          (l) => setMe({ lat: l.coords.latitude, lng: l.coords.longitude }));
+        compass = await Location.watchHeadingAsync((h) => {
+          const value = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+          setHeading((prev) => (prev === null || Math.abs(((value - prev + 540) % 360) - 180) > 5 ? value : prev));
+        });
+      } catch {}
+    })();
+    return () => { cancelled = true; position?.remove(); compass?.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (mapReady) web.current?.postMessage(JSON.stringify({ type: 'me', lat: carAt.lat, lng: carAt.lng, heading }));
+  }, [mapReady, carAt.lat, carAt.lng, heading]);
+
+  async function choose(name: string) {
     if (busy) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setError(''); setSelected(name); setQuery(name); setPlaying(false);
     sheet.current?.snapToIndex(1);
     try {
-      const result = await planRoutes({ origin: { lat: 32.7157, lng: -117.1611 }, destination: destinations[name] });
+      const result = await planRoutes({ origin: carAt, destination: (origin.destinations as Record<string, Point>)[name] });
       setPlan(result); send(result);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch { setError('Couldn’t reach the route planner. Tap a destination to retry.'); }
@@ -62,9 +106,9 @@ export default function Home() {
 
   function search() {
     const text = query.trim().toLowerCase();
-    if (text.includes('julian')) void choose('Julian');
-    else if (text.includes('los angeles') || text === 'la') void choose('Los Angeles');
-    else setError('Try Los Angeles or Julian for the demo.');
+    const match = Object.keys(origin.destinations).find((name) => name.toLowerCase().includes(text) && text.length > 1);
+    if (match) void choose(match);
+    else setError(`Try ${Object.keys(origin.destinations).join(' or ')}.`);
   }
 
   function takeRoute() {
@@ -83,11 +127,18 @@ export default function Home() {
 
   return <View style={styles.screen}>
     <WebView ref={web} source={{ html: mapHtml }} style={styles.map} originWhitelist={['*']} javaScriptEnabled scrollEnabled={false}
-      onMessage={(event: WebViewMessageEvent) => { if (event.nativeEvent.data.includes('ready') && plan) send(plan); }} />
-    <BottomSheet ref={sheet} index={0} snapPoints={snapPoints} enableDynamicSizing={false} enablePanDownToClose={false}
+      onMessage={(event: WebViewMessageEvent) => { if (!event.nativeEvent.data.includes('ready')) return; setMapReady(true); if (plan) send(plan); }} />
+    <Reanimated.View style={[styles.locate, locateStyle]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Locate me" onPress={() => { void Haptics.selectionAsync(); send({ type: 'locate' }); }}>
+        <Glass style={styles.locateGlass}>
+          <SymbolView name="location.fill" size={18} tintColor={theme.accent} fallback={<Ionicons name="navigate" size={18} color={theme.accent} />} />
+        </Glass>
+      </Pressable>
+    </Reanimated.View>
+    <BottomSheet ref={sheet} index={0} snapPoints={snapPoints} animatedPosition={sheetPosition} enableDynamicSizing={false} enablePanDownToClose={false}
       backgroundComponent={SheetBackground} handleIndicatorStyle={styles.grabber}
       keyboardBehavior="extend" style={styles.sheetShadow}>
-      <BottomSheetScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBar + 32 }]} keyboardShouldPersistTaps="handled">
+      <BottomSheetScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBar + 24 }]} keyboardShouldPersistTaps="handled">
         {playing && plan ? <View style={styles.driving}>
           <View style={{ flex: 1 }}>
             <Mono style={{ color: theme.accent }}>On the vibe route · +{plan.extraMinutes} MIN</Mono>
@@ -97,17 +148,24 @@ export default function Home() {
             <Text style={styles.smallButtonText}>I drove it</Text>
           </Pressable>
         </View> : <>
+          <Glass style={styles.segmented}>
+            {(Object.keys(origins) as OriginKey[]).map((key) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={origins[key].label}
+              onPress={() => { void Haptics.selectionAsync(); setOriginKey(key); setSelected(null); setQuery(''); setPlan(null); setPlaying(false); setError(''); }}
+              style={[styles.segment, originKey === key && styles.segmentActive]}>
+              <Text style={[styles.segmentText, originKey === key && { color: theme.paper }]}>{origins[key].label}</Text>
+            </Pressable>)}
+          </Glass>
           <View style={styles.search}>
             <Ionicons name="search" size={18} color={theme.muted} />
             <BottomSheetTextInput accessibilityLabel="Where to?" placeholder="Where to?" placeholderTextColor={theme.muted} value={query}
               onChangeText={setQuery} onSubmitEditing={search} returnKeyType="search" style={styles.input} />
           </View>
           <View style={styles.chips}>
-            {(Object.keys(destinations) as Destination[]).map((name) => {
+            {Object.keys(origin.destinations).map((name) => {
               const active = selected === name;
               return <Pressable key={name} accessibilityRole="button" accessibilityLabel={name} disabled={busy} onPress={() => void choose(name)}
                 style={[styles.chip, active && styles.chipActive]}>
-                <Ionicons name={name === 'Julian' ? 'trail-sign-outline' : 'business-outline'} size={14} color={active ? theme.paper : theme.ink} />
+                <Ionicons name={/Julian|Stinson/.test(name) ? 'trail-sign-outline' : 'business-outline'} size={14} color={active ? theme.paper : theme.ink} />
                 <Text style={[styles.chipText, active && { color: theme.paper }]}>{name}</Text>
               </Pressable>;
             })}
@@ -165,6 +223,12 @@ const styles = StyleSheet.create({
   sheetShadow: { shadowColor: theme.ink, shadowOpacity: 0.12, shadowRadius: 24, shadowOffset: { width: 0, height: -4 } },
   grabber: { backgroundColor: 'rgba(20,17,15,0.25)', width: 40 },
   content: { paddingHorizontal: 18 },
+  segmented: { flexDirection: 'row', padding: 3, borderRadius: 18, marginBottom: 10, borderWidth: 0.5, borderColor: theme.hairline },
+  segment: { flex: 1, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  segmentActive: { backgroundColor: theme.ink },
+  segmentText: { fontSize: 13, fontWeight: '600', color: theme.ink },
+  locate: { position: 'absolute', right: 16 },
+  locateGlass: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: theme.hairline },
   search: { flexDirection: 'row', alignItems: 'center', height: 44, paddingHorizontal: 14, gap: 8, borderRadius: 14, backgroundColor: 'rgba(20,17,15,0.06)' },
   input: { flex: 1, height: 44, fontSize: 17, color: theme.ink },
   chips: { flexDirection: 'row', gap: 8, marginTop: 10 },

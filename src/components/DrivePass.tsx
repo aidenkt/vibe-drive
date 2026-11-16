@@ -24,7 +24,7 @@ function postmark(at: number) {
   return `DRIVEN · ${pad(d.getMonth() + 1)}.${pad(d.getDate())}.${String(d.getFullYear()).slice(2)} · ${hours}:${pad(d.getMinutes())} ${d.getHours() < 12 ? 'AM' : 'PM'} · `;
 }
 
-function Stamp({ size, drivenAt, serial, animate }: { size: number; drivenAt: number; serial: number; animate?: boolean }) {
+export function Stamp({ size, drivenAt, serial, animate }: { size: number; drivenAt: number; serial: number; animate?: boolean }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [progress] = useState(() => new Animated.Value(animate ? 0 : 1));
   useEffect(() => {

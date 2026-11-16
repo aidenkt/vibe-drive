@@ -27,7 +27,8 @@
       "expo-router",
       "expo-status-bar",
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      ["expo-location", { "locationWhenInUsePermission": "Vibe Drive starts scenic routes from where you are." }]
     ]
   }
 }
