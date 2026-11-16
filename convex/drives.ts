@@ -16,6 +16,46 @@ export const upvote = mutation({
   },
 });
 
+export const markDriven = mutation({
+  args: { driveId: v.id("drives"), handle: v.string() },
+  handler: async (ctx, { driveId, handle }) => {
+    if (!(await ctx.db.get("drives", driveId))) throw new Error("Drive not found");
+    const existing = await ctx.db.query("driven")
+      .withIndex("by_handle_and_driveId", (q) => q.eq("handle", handle).eq("driveId", driveId)).unique();
+    if (existing) return existing;
+    const id = await ctx.db.insert("driven", { driveId, handle, drivenAt: Date.now() });
+    return (await ctx.db.get("driven", id))!;
+  },
+});
+
+export const listDriven = query({
+  args: { handle: v.string() },
+  handler: async (ctx, { handle }) =>
+    ctx.db.query("driven").withIndex("by_handle_and_driveId", (q) => q.eq("handle", handle)).take(100),
+});
+
+export const listSplits = query({
+  args: {},
+  handler: async (ctx) => ctx.db.query("routeSplits").take(100),
+});
+
+export const saveSplit = internalMutation({
+  args: {
+    driveId: v.id("drives"),
+    fast: v.array(v.array(v.number())),
+    vibe: v.array(v.array(v.number())),
+    extraMinutes: v.number(),
+    miles: v.number(),
+    goldenHourAt: v.string(),
+  },
+  handler: async (ctx, split) => {
+    const existing = await ctx.db.query("routeSplits").withIndex("by_driveId", (q) => q.eq("driveId", split.driveId)).unique();
+    if (existing) await ctx.db.replace("routeSplits", existing._id, split);
+    else await ctx.db.insert("routeSplits", split);
+    return null;
+  },
+});
+
 const catalog = [
   {
     name: "Torrey Pines to Del Mar", region: "San Diego coast",

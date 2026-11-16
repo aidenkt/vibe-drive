@@ -13,4 +13,17 @@ export default defineSchema({
     color: v.string(),
     upvotes: v.number(),
   }).index("by_upvotes", ["upvotes"]).index("by_name", ["name"]),
+  driven: defineTable({
+    driveId: v.id("drives"),
+    handle: v.string(),
+    drivenAt: v.number(),
+  }).index("by_handle_and_driveId", ["handle", "driveId"]),
+  routeSplits: defineTable({
+    driveId: v.id("drives"),
+    fast: v.array(v.array(v.number())),
+    vibe: v.array(v.array(v.number())),
+    extraMinutes: v.number(),
+    miles: v.number(),
+    goldenHourAt: v.string(),
+  }).index("by_driveId", ["driveId"]),
 });

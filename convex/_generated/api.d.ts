@@ -10,6 +10,7 @@
 
 import type * as drives from "../drives.js";
 import type * as routes from "../routes.js";
+import type * as simplify from "../simplify.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   drives: typeof drives;
   routes: typeof routes;
+  simplify: typeof simplify;
 }>;
 
 /**

@@ -1,12 +1,14 @@
 import { getTimes } from "suncalc";
+import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { point } from "./schema";
+import { simplify } from "./simplify";
 
 type Point = { lat: number; lng: number };
 type Coordinate = [number, number];
-type Route = { coordinates: Coordinate[]; minutes: number; firstLegMinutes: number; estimated: boolean };
+type Route = { coordinates: Coordinate[]; minutes: number; firstLegMinutes: number; legKm: number[]; estimated: boolean };
 
 function distance(a: Point, b: Point) {
   const rad = Math.PI / 180;
@@ -34,7 +36,7 @@ async function route(points: Point[]): Promise<Route> {
     if (!response.ok) throw new Error("Routing unavailable");
     const data = await response.json() as {
       code?: string;
-      routes?: { duration: number; geometry: { coordinates: number[][] }; legs: { duration: number }[] }[];
+      routes?: { duration: number; geometry: { coordinates: number[][] }; legs: { duration: number; distance: number }[] }[];
     };
     const result = data.routes?.[0];
     if (data.code !== "Ok" || !result || !Number.isFinite(result.duration) || result.duration < 0
@@ -46,14 +48,17 @@ async function route(points: Point[]): Promise<Route> {
       coordinates: result.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
       minutes: result.duration / 60,
       firstLegMinutes: result.legs[0].duration / 60,
+      legKm: result.legs.map((leg) => leg.distance / 1000),
       estimated: false,
     };
   } catch {
-    const legMinutes = points.slice(1).map((p, index) => distance(points[index], p) / 50 * 60);
+    const legKm = points.slice(1).map((p, index) => distance(points[index], p));
+    const legMinutes = legKm.map((km) => km / 50 * 60);
     return {
       coordinates: points.map((p) => [p.lat, p.lng]),
       minutes: legMinutes.reduce((total, minutes) => total + minutes, 0),
       firstLegMinutes: legMinutes[0],
+      legKm,
       estimated: true,
     };
   } finally {
@@ -62,10 +67,10 @@ async function route(points: Point[]): Promise<Route> {
 }
 
 export const planRoutes = action({
-  args: { origin: point, destination: point },
-  handler: async (ctx, { origin, destination }): Promise<{
+  args: { origin: point, destination: point, driveId: v.optional(v.id("drives")) },
+  handler: async (ctx, { origin, destination, driveId }): Promise<{
     fast: Coordinate[]; vibe: Coordinate[]; fastMinutes: number; vibeMinutes: number;
-    extraMinutes: number; drive: Doc<"drives">; goldenHour: string; estimated: boolean;
+    extraMinutes: number; drive: Doc<"drives">; goldenHour: string; goldenHourAt: string; miles: number; estimated: boolean;
   }> => {
     for (const p of [origin, destination]) {
       if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180) {
@@ -75,7 +80,7 @@ export const planRoutes = action({
     const drives: Doc<"drives">[] = await ctx.runQuery(api.drives.listDrives, {});
     const candidates = drives.filter((drive) => drive.waypoints.length > 0 && distance(drive.waypoints[0], origin) > 8);
     if (!candidates.length) throw new Error("No scenic drives available. Seed the drive catalog first.");
-    const drive = candidates.reduce((best, candidate) =>
+    const drive = drives.find((d) => d._id === driveId) ?? candidates.reduce((best, candidate) =>
       segmentDistance(candidate.waypoints[0], origin, destination) < segmentDistance(best.waypoints[0], origin, destination) ? candidate : best);
     const [fast, vibe] = await Promise.all([
       route([origin, destination]),
@@ -93,9 +98,18 @@ export const planRoutes = action({
     const departure = new Date(sunset.getTime() - (40 + vibe.firstLegMinutes) * 60_000);
     const fastMinutes = Math.round(fast.minutes);
     const vibeMinutes = Math.round(vibe.minutes);
+    const extraMinutes = Math.max(0, vibeMinutes - fastMinutes);
+    const miles = Math.round(vibe.legKm.slice(1, -1).reduce((total, km) => total + km, 0) * 0.621371 * 10) / 10;
+    const golden = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit", hour12: true })
+      .format(new Date(sunset.getTime() - 40 * 60_000));
+    const goldenHourAt = golden.replace(/\s?([AP])M$/, "$1");
+    await ctx.runMutation(internal.drives.saveSplit, {
+      driveId: drive._id, fast: simplify(fast.coordinates, 60), vibe: simplify(vibe.coordinates, 60), extraMinutes, miles, goldenHourAt,
+    });
     return {
+      goldenHourAt, miles,
       fast: fast.coordinates, vibe: vibe.coordinates, fastMinutes, vibeMinutes,
-      extraMinutes: Math.max(0, vibeMinutes - fastMinutes), drive,
+      extraMinutes, drive,
       goldenHour: `Leave at ${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit", hour12: true }).format(departure).replace(/\s?[AP]M$/, "")} to hit ${drive.name} at golden hour`,
       estimated: fast.estimated || vibe.estimated,
     };
